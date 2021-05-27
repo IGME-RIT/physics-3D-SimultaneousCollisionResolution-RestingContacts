@@ -87,6 +87,7 @@
   <ItemGroup>
     <ClCompile Include="BufferCPU.cpp" />
     <ClCompile Include="BufferGPU.cpp" />
+    <ClCompile Include="Cuboid.cpp" />
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Demo.cpp" />
@@ -100,6 +101,7 @@
     <ClCompile Include="PipeSky.cpp" />
     <ClCompile Include="PipeWire.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="Shape.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TextureGPU.cpp" />
     <ClCompile Include="VertexBasic.cpp" />
@@ -110,6 +112,7 @@
   <ItemGroup>
     <ClInclude Include="BufferCPU.h" />
     <ClInclude Include="BufferGPU.h" />
+    <ClInclude Include="Cuboid.h" />
     <ClInclude Include="Demo.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Helper.h" />
@@ -123,6 +126,7 @@
     <ClInclude Include="PipeSky.h" />
     <ClInclude Include="PipeWire.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="Shape.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TextureGPU.h" />

@@ -1,0 +1,153 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Helper.cpp" />
+    <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="Pipe.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Pipe2D.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeBasic.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeBumpy.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeColor.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeSky.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeWire.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BufferCPU.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BufferGPU.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureGPU.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexBasic.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexColor.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexTangent.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexWire.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Demo.cpp">
+      <Filter>Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="Entity.cpp">
+      <Filter>Components\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Components\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Shape.cpp">
+      <Filter>Components\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Components\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Cuboid.cpp">
+      <Filter>Components\Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Helper.h" />
+    <ClInclude Include="Main.h" />
+    <ClInclude Include="Scene.h" />
+    <ClInclude Include="Pipe.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Pipe2D.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeBasic.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeBumpy.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeColor.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeSky.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeWire.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BufferCPU.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BufferGPU.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexWire.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureGPU.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexBasic.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexColor.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexTangent.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Demo.h">
+      <Filter>Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="Entity.h">
+      <Filter>Components\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Components\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Shape.h">
+      <Filter>Components\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Components\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Cuboid.h">
+      <Filter>Components\Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Vulkan Files">
+      <UniqueIdentifier>{8010a2eb-6810-49fa-9825-317f7740dca5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Components">
+      <UniqueIdentifier>{ef519f8d-7906-4abd-b48c-b6930e421fb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Managers">
+      <UniqueIdentifier>{31882650-1b8c-4e0c-aafd-04fdfd9d8e9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Components\Header Files">
+      <UniqueIdentifier>{2f2439a2-8bfa-4409-adc8-28259599be34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Components\Source Files">
+      <UniqueIdentifier>{2cb09d1c-02ad-48da-968a-adbdb443a15b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

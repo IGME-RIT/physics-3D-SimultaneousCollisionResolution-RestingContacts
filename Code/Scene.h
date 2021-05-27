@@ -24,42 +24,28 @@ that utilizes Vulkan, see more at http://cemu.info
 
 #pragma once
 #include "Demo.h"
+#include "Shape.h"
+#include "Cuboid.h"
 
 class Scene
 {
 private:
-	// OBJ files
-	Mesh* catMesh;
-	Mesh* dogMesh;
-	Mesh* rockMesh;
+	// Sky
 	Mesh* skyMesh;
-
-	// Textures
-	Texture* catTex;
-	Texture* dogTex;
 	Texture* skyTex;
-	Texture* rockColor;
-	Texture* rockNormal;
-	Texture* logoTex;
-	Texture* fontTex;
-
-	// Make entities
-	Entity* catEntity;
-	Entity* dogEntity;
-	Entity* buildingEntity;
 	Entity* skyEntity;
-	Entity* logoEntity;
-	Entity* textEntity;
-	Entity* textEntity2;
 
-	Mesh* myCustomMesh;
-	Entity* myCustomEntity;
 
-	Mesh* catHitboxMesh;
-	Entity* catHitboxEntity;
+	// Custom shapes.
+	std::vector<std::shared_ptr<Cuboid>> cuboids;
 
-	Mesh* dogHitboxMesh;
-	Entity* dogHitboxEntity;
+	bool isScenePaused = false;
+
+	// Functions called from Update
+	void CheckKeyboardInput();
+	void UpdatePhysics();
+	void UpdateText();
+	void UpdateCamera();
 
 public:
 	bool* keys;

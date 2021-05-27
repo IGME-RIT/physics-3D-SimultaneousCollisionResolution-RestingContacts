@@ -284,6 +284,12 @@ void Mesh::LoadBasic(char* file)
 			if (vertList[i].position[j] > max[j]) max[j] = vertList[i].position[j];
 		}
 	}
+
+	// get halfwidth/center for collision
+	for (int i = 0; i < 3; i++) {
+		halfwidth[i] = (max[i] - min[i]) / 2.0f;
+		center[i] = (max[i] + min[i]) / 2.0f;
+	}
 }
 
 void Mesh::LoadTangents(char* file)
@@ -612,6 +618,12 @@ void Mesh::LoadTangents(char* file)
 			if (vertList[i].position[j] > max[j]) max[j] = vertList[i].position[j];
 		}
 	}
+
+	// get halfwidth/center for collision
+	for (int i = 0; i < 3; i++) {
+		halfwidth[i] = (max[i] - min[i]) / 2.0f;
+		center[i] = (max[i] + min[i]) / 2.0f;
+	}
 }
 
 Mesh::Mesh(char* file, bool tangents)
@@ -736,6 +748,13 @@ Mesh::Mesh(VertexColor* vertList, int numVerts)
 			if (vertList[i].position[j] > max[j]) max[j] = vertList[i].position[j];
 		}
 	}
+
+	// get halfwidth/center for collision
+	for (int i = 0; i < 3; i++) {
+		halfwidth[i] = (max[i] - min[i]) / 2.0f;
+		center[i] = (max[i] + min[i]) / 2.0f;
+	}
+		
 }
 
 Mesh::Mesh(VertexWire* vertList, int numVerts)
@@ -842,6 +861,12 @@ Mesh::Mesh(VertexWire* vertList, int numVerts)
 			if (vertList[i].position[j] < min[j]) min[j] = vertList[i].position[j];
 			if (vertList[i].position[j] > max[j]) max[j] = vertList[i].position[j];
 		}
+	}
+
+	// get halfwidth/center for collision
+	for (int i = 0; i < 3; i++) {
+		halfwidth[i] = (max[i] - min[i]) / 2.0f;
+		center[i] = (max[i] + min[i]) / 2.0f;
 	}
 }
 

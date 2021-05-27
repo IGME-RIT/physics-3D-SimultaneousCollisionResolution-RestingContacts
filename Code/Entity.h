@@ -61,5 +61,7 @@ public:
 
 	void Draw(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout);
 	void Update();
+
+	bool SeperatingAxisTest(Entity* const other);
 };
 

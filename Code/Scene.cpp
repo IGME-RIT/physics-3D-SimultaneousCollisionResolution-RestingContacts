@@ -30,46 +30,17 @@ Mesh* HitboxMesh(Mesh* base);
 
 Scene::Scene()
 {
-	// Load all the OBJ files
-	catMesh = new Mesh("../../../Assets/kitten.3Dobj", false);
-	dogMesh = new Mesh("../../../Assets/dog.3Dobj", false);
-	rockMesh = new Mesh("../../../Assets/building.3Dobj", true);
 	skyMesh = new Mesh("../../../Assets/skybox.3Dobj", false);
 
 	// Load all the PNG files
-	catTex = new Texture("../../../Assets/CatColor.png");
-	dogTex = new Texture("../../../Assets/DogColor.png");
 	skyTex = new Texture("../../../Assets/skybox.png");
 
-	rockColor = new Texture("../../../Assets/BrickColor.png");
-	rockNormal = new Texture("../../../Assets/BrickNormal.png");
-
-	// These are for 2D entities
-	logoTex = new Texture("../../../Assets/Logo.png");
-	fontTex = new Texture("../../../Assets/font2.png");
 
 	// In this example, each entity has its own seperate
 	// OBJ and PNG file. However, you can use the same
 	// Model and Texture with multiple entities, without
 	// needing to reload the same file multiple times
 
-	// Load a cat and dog, because they're adorable
-	catEntity = new Entity();
-	catEntity->mesh = catMesh;
-	catEntity->texture[0] = catTex;
-	catEntity->CreateDescriptorSetBasic();
-
-	dogEntity = new Entity();
-	dogEntity->mesh = dogMesh;
-	dogEntity->texture[0] = dogTex;
-	dogEntity->CreateDescriptorSetBasic();
-
-	// this is the building from previous OpenGL tutorials
-	buildingEntity = new Entity();
-	buildingEntity->mesh = rockMesh;
-	buildingEntity->texture[0] = rockColor;
-	buildingEntity->texture[1] = rockNormal;
-	buildingEntity->CreateDescriptorSetBumpy();
 
 	// the skybox has a cube with a 2D PNG, not a cubemap
 	skyEntity = new Entity();
@@ -77,66 +48,14 @@ Scene::Scene()
 	skyEntity->texture[0] = skyTex;
 	skyEntity->CreateDescriptorSetBasic();
 
-	// No mesh needed here, its procedurally generated
-	logoEntity = new Entity();
-	logoEntity->texture[0] = logoTex;
-	logoEntity->CreateDescriptorSet2D();
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 0, 0), glm::vec3(1, 0.5, 0.5)));
 
-	textEntity = new Entity();
-	textEntity->texture[0] = fontTex;
-	sprintf(textEntity->name, "_______");
-	textEntity->CreateDescriptorSet2D();
+	// Demo code for making 2d rectangle.
+	//floor = std::make_unique<Shape>(std::vector<glm::vec3>{ glm::vec3(-10, -10, 0), glm::vec3(1, 1, 1),
+	//														glm::vec3( 10, -10, 0), glm::vec3(1, 1, 1),
+	//														glm::vec3( 10,  -3, 0), glm::vec3(1, 1, 1),
+	//														glm::vec3(-10,  -3, 0), glm::vec3(1, 1, 1), });
 
-	textEntity2 = new Entity();
-	textEntity2->texture[0] = fontTex;
-	sprintf(textEntity2->name, "_______");
-	textEntity2->CreateDescriptorSet2D();
-
-	// create a Mesh without an OBJ file
-	VertexColor* colorList = new VertexColor[3];
-	colorList[0].position[0] = 0.0f;
-	colorList[0].position[1] = 0.0f;
-	colorList[0].position[2] = 0.0f;
-	colorList[0].color[0] = 0.0f;
-	colorList[0].color[1] = 0.0f;
-	colorList[0].color[2] = 0.0f;
-	colorList[1].position[0] = 1.0f;
-	colorList[1].position[1] = 0.0f;
-	colorList[1].position[2] = 0.0f;
-	colorList[1].color[0] = 1.0f;
-	colorList[1].color[1] = 0.0f;
-	colorList[1].color[2] = 0.0f;
-	colorList[2].position[0] = 0.0f;
-	colorList[2].position[1] = 1.0f;
-	colorList[2].position[2] = 0.0f;
-	colorList[2].color[0] = 0.0f;
-	colorList[2].color[1] = 1.0f;
-	colorList[2].color[2] = 0.0f;
-	myCustomMesh = new Mesh(colorList, 3);
-	
-	// do NOT delete colorList, it will
-	// be deleted automatically after it
-	// is passed to the GPU, by our smart
-	// BufferCPU / BufferGPU system
-
-	// create an entity for the mesh
-	myCustomEntity = new Entity();
-	myCustomEntity->mesh = myCustomMesh;
-	myCustomEntity->CreateDescriptorSetColor();
-
-	// hitbox for cat and dog
-	catHitboxMesh = HitboxMesh(catMesh);
-	dogHitboxMesh = HitboxMesh(dogMesh);
-
-	// entity for cat hitbox
-	catHitboxEntity = new Entity();
-	catHitboxEntity->mesh = catHitboxMesh;
-	catHitboxEntity->CreateDescriptorSetWire();
-
-	// entity for dog hitbox
-	dogHitboxEntity = new Entity();
-	dogHitboxEntity->mesh = dogHitboxMesh;
-	dogHitboxEntity->CreateDescriptorSetWire();
 }
 
 void Scene::Draw()
@@ -155,27 +74,11 @@ void Scene::Draw()
 	// but you can't draw the same entity twice.
 	// The Demo system will actually block you from trying
 
-	// 2D Pipeline
-	// draw 2D logo and fonts
-	d->ApplyPipeline2D();
-	d->DrawEntity(logoEntity);
-	d->DrawEntity(textEntity);
-	d->DrawEntity(textEntity2);
-
 	// Color pipeline
 	d->ApplyPipelineColor();
-	d->DrawEntity(myCustomEntity);
-
-	// Bind the "basic" pipeline
-	// draw the cat and the dog
-	d->ApplyPipelineBasic();
-	d->DrawEntity(catEntity);
-	d->DrawEntity(dogEntity);
-
-	// Bind the bumpy pipeline (for normal maps)
-	// Draw the building, which will use the pipeBumpy pipeline
-	d->ApplyPipelineBumpy();
-	d->DrawEntity(buildingEntity);
+	for (auto cuboidPtr : cuboids) {
+		d->DrawEntity(cuboidPtr->entity.get());
+	}
 
 	// Bind the sky pipeline
 	// Draw the sky, which will use the pipeSky pipeline
@@ -183,15 +86,16 @@ void Scene::Draw()
 	d->DrawEntity(skyEntity);
 
 	// bind the hitbox pipeline
-	d->ApplyPipelineWire();
-	d->DrawEntity(catHitboxEntity);
-	d->DrawEntity(dogHitboxEntity);
+	//d->ApplyPipelineWire();
+	//d->DrawEntity(catHitboxEntity);
+	//d->DrawEntity(dogHitboxEntity);
 }
 
 // used to record time
 float time = 0.0f;
 float angle = 0.0f;
-float dist = 0.0f;
+float dist = 10.0f;
+float adjustZ = 3.0f;
 bool noPressYet = true;
 glm::vec3 cameraPosition;
 
@@ -202,12 +106,18 @@ char LetterToVirtualKey(char letter)
 
 void Scene::Update()
 {
-	Demo* d = Demo::GetInstance();
+	if (!isScenePaused) {
+		time += 1.f / 60.f;
+	}
 
-	// create projection matrix
-	// If this looks confusing, go back to
-	// prepare_uniform_buffers and read those comments
-	d->projection_matrix = glm::perspective(45.0f * 3.14159f / 180.0f, (float)d->width / (float)d->height, 0.1f, 100.0f);
+	CheckKeyboardInput();
+	UpdateCamera();
+	UpdateText();
+	UpdatePhysics();
+
+}
+
+void Scene::CheckKeyboardInput() {
 
 	// all key codes are here, https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 	// Any of these can go into keys[]
@@ -220,30 +130,35 @@ void Scene::Update()
 
 	// hitting the letter P on the keyboard
 	// will pause the scene
-	if (!keys['P'])
+	// hitting the letter O will resume.
+
+	if (keys['P'])
 	{
-		// add to time
-		time += 1.0f / 60.0f;
+		isScenePaused = true;
 	}
-	
+	if (keys['O']) {
+		isScenePaused = false;
+	}
+
+
 	if (keys[VK_UP])
 	{
 		// stop using default camera animation
 		noPressYet = false;
-
+	
 		dist -= 0.05f;
-
+	
 		if (dist <= 1.0f)
 			dist = 1.0f;
 	}
-
+	
 	if (keys[VK_DOWN])
 	{
 		// stop using default camera animation
 		noPressYet = false;
-
+	
 		dist += 0.05f;
-
+	
 		if (dist >= 9.0f)
 			dist = 9.0f;
 	}
@@ -252,49 +167,38 @@ void Scene::Update()
 	{
 		// stop using default camera animation
 		noPressYet = false;
-
+	
 		angle -= 0.01f;
 	}
-
+	
 	if (keys[VK_RIGHT])
 	{
 		// stop using default camera animation
 		noPressYet = false;
-
+	
 		angle += 0.01f;
 	}
+}
+
+void Scene::UpdatePhysics() {
 
 	// set up our custom entity
-	myCustomEntity->pos = glm::vec3(0, 0, 0);
-	myCustomEntity->rot = glm::vec3(0, 0, 0);
-	myCustomEntity->scale = glm::vec3(1, 1, 1);
+	//myCustomEntity->pos = glm::vec3(sin(3.14f - time / 6.0f) + 1, 0, cos(3.14f - time / 6.0f));
+	//myCustomEntity->rot.y = -time / 6.0f;
+	//myCustomEntity->scale = glm::vec3(1.0f);
 
-	// Change cat's position
-	catEntity->pos = glm::vec3(sin(time) - 1, 0, cos(time));
-	catEntity->rot.y = time;
-	catEntity->scale = glm::vec3(1);
+}
 
-	// Change dog's position
-	dogEntity->pos = glm::vec3(sin(3.14f - time) + 1, 0, cos(3.14f - time));
-	dogEntity->rot.y = -time;
-	dogEntity->scale = glm::vec3(0.8f);
+void Scene::UpdateCamera() {
+	Demo* d = Demo::GetInstance();
 
-	// Change building
-	buildingEntity->pos = glm::vec3(0, 0, -1);
-	buildingEntity->scale = glm::vec3(1.0f);
-
+	// create projection matrix
+	// If this looks confusing, go back to
+	// prepare_uniform_buffers and read those comments
+	d->projection_matrix = glm::perspective(45.0f * 3.14159f / 180.0f, (float)d->width / (float)d->height, 0.1f, 100.0f);
 	float adjustZ = 0.0f;
 
-	// View matrix, where the camera is
-	
-	// play default camera animation
-	// until user tries pressing arrow keys
-	if (noPressYet)
-	{
-		angle = time / 2;
-		dist = 5.0f;
-		adjustZ = 3.0f;
-	}
+	/* Removed default spinning animation. */
 
 	cameraPosition = {
 		dist * sin(angle),
@@ -311,33 +215,12 @@ void Scene::Update()
 	// working, because it sets depth to the maximum possible value
 	skyEntity->pos = cameraPosition;
 	skyEntity->scale = glm::vec3(1.0f);
+}
 
-	logoEntity->pos = glm::vec3(-0.7, -0.7, 0.0f);
-	logoEntity->scale = glm::vec3(0.5f);
+void Scene::UpdateText() {
 
-	textEntity->pos = glm::vec3(-0.5, -0.75, 0.0f);
-	textEntity->scale = glm::vec3(0.5f);
-	sprintf(textEntity->name, "NikoRIT");
 
-	textEntity2->pos = glm::vec3(0.2, -0.75, 0.0f);
-	textEntity2->scale = glm::vec3(0.5f);
-	sprintf(textEntity2->name, "Time%02f", time);
 
-	// update the cat hitbox
-	catHitboxEntity->pos = catEntity->pos;
-	catHitboxEntity->rot = catEntity->rot;
-	catHitboxEntity->scale = catEntity->scale;
-	catHitboxEntity->color = glm::vec3(
-		sin(time), 0, cos(time)
-	);
-
-	// update the dog hitbox
-	dogHitboxEntity->pos = dogEntity->pos;
-	dogHitboxEntity->rot = dogEntity->rot;
-	dogHitboxEntity->scale = dogEntity->scale;
-	dogHitboxEntity->color = glm::vec3(
-		cos(time), sin(time), 0
-	);
 }
 
 Scene::~Scene()
@@ -345,37 +228,11 @@ Scene::~Scene()
 	// We delete our uniform buffer (which was on the CPU),
 	// then we destroy all of our GPU buffers that were 
 	// originally made from staging buffers
-	delete catEntity;
-	delete dogEntity;
-	delete buildingEntity;
+
 	delete skyEntity;
-	delete logoEntity;
-	delete textEntity;
-	delete textEntity2;
-
-	// Meshes
-	delete catMesh;
-	delete dogMesh;
-	delete rockMesh;
 	delete skyMesh;
-
-	// Textures
-	delete catTex;
-	delete dogTex;
 	delete skyTex;
-	delete rockColor;
-	delete rockNormal;
-	delete logoTex;
-	delete fontTex;
 
-	delete myCustomMesh;
-	delete myCustomEntity;
-
-	delete catHitboxMesh;
-	delete catHitboxEntity;
-
-	delete dogHitboxMesh;
-	delete dogHitboxEntity;
 }
 
 Mesh* HitboxMesh(Mesh* base)

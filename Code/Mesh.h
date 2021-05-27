@@ -9,6 +9,8 @@ class Mesh
 public:
 	float min[3];
 	float max[3];
+	float center[3];
+	float halfwidth[3];
 
 	// Mesh data
 	BufferCPU* vertexDataCPU;
