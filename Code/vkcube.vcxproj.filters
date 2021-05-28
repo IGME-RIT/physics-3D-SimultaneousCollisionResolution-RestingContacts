@@ -46,9 +46,6 @@
     <ClCompile Include="VertexWire.cpp">
       <Filter>Vulkan Files</Filter>
     </ClCompile>
-    <ClCompile Include="Demo.cpp">
-      <Filter>Managers</Filter>
-    </ClCompile>
     <ClCompile Include="Entity.cpp">
       <Filter>Components\Source Files</Filter>
     </ClCompile>
@@ -66,6 +63,15 @@
     </ClCompile>
     <ClCompile Include="Rigidbody.cpp">
       <Filter>Components\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Demo.cpp">
+      <Filter>Vulkan Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Collisions.h">
+      <Filter>Managers\Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Collisions.cpp">
+      <Filter>Managers\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -117,9 +123,6 @@
     <ClInclude Include="stb_image.h">
       <Filter>Vulkan Files</Filter>
     </ClInclude>
-    <ClInclude Include="Demo.h">
-      <Filter>Managers</Filter>
-    </ClInclude>
     <ClInclude Include="Entity.h">
       <Filter>Components\Header Files</Filter>
     </ClInclude>
@@ -138,6 +141,9 @@
     <ClInclude Include="Rigidbody.h">
       <Filter>Components\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Demo.h">
+      <Filter>Vulkan Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Vulkan Files">
@@ -154,6 +160,12 @@
     </Filter>
     <Filter Include="Components\Source Files">
       <UniqueIdentifier>{2cb09d1c-02ad-48da-968a-adbdb443a15b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Managers\Header Files">
+      <UniqueIdentifier>{257f769b-4b2c-4a44-8fac-45618e0be973}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Managers\Source Files">
+      <UniqueIdentifier>{bdbbaf03-4776-41ad-9dfd-86877fac333e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

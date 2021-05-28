@@ -87,6 +87,8 @@
   <ItemGroup>
     <ClCompile Include="BufferCPU.cpp" />
     <ClCompile Include="BufferGPU.cpp" />
+    <ClCompile Include="Collisions.cpp" />
+    <ClCompile Include="Collisions.h" />
     <ClCompile Include="Cuboid.cpp" />
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Main.cpp" />

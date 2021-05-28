@@ -27,6 +27,7 @@ that utilizes Vulkan, see more at http://cemu.info
 #include "Shape.h"
 #include "Cuboid.h"
 #include "Rigidbody.h"
+#include "Collisions.h"
 #include <chrono>
 
 class Scene

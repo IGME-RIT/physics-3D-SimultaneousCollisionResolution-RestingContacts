@@ -194,7 +194,6 @@ void Scene::CheckKeyboardInput() {
 void Scene::UpdatePhysics(double dt) {
 
 	rb->Update(dt);
-
 }
 
 void Scene::UpdateCamera() {
