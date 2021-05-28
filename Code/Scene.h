@@ -26,6 +26,8 @@ that utilizes Vulkan, see more at http://cemu.info
 #include "Demo.h"
 #include "Shape.h"
 #include "Cuboid.h"
+#include "Rigidbody.h"
+#include <chrono>
 
 class Scene
 {
@@ -35,15 +37,20 @@ private:
 	Texture* skyTex;
 	Entity* skyEntity;
 
-
 	// Custom shapes.
 	std::vector<std::shared_ptr<Cuboid>> cuboids;
+	std::shared_ptr<Rigidbody> rb;
 
+	// Timing variables
 	bool isScenePaused = false;
+	std::chrono::steady_clock::time_point timePointSceneStart;
+	std::chrono::steady_clock::time_point timePointStartOfLastFrame;
+	std::chrono::steady_clock::time_point timePointStartOfThisFrame;
+	double lastFramesTime = 0;
 
 	// Functions called from Update
 	void CheckKeyboardInput();
-	void UpdatePhysics();
+	void UpdatePhysics(double dt);
 	void UpdateText();
 	void UpdateCamera();
 
@@ -53,5 +60,7 @@ public:
 	void Draw();
 	void Update();
 	~Scene();
+
+	double LastFrameTime();
 };
 

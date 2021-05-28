@@ -100,6 +100,7 @@
     <ClCompile Include="PipeColor.cpp" />
     <ClCompile Include="PipeSky.cpp" />
     <ClCompile Include="PipeWire.cpp" />
+    <ClCompile Include="Rigidbody.cpp" />
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Shape.cpp" />
     <ClCompile Include="Texture.cpp" />
@@ -125,6 +126,7 @@
     <ClInclude Include="PipeColor.h" />
     <ClInclude Include="PipeSky.h" />
     <ClInclude Include="PipeWire.h" />
+    <ClInclude Include="Rigidbody.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Shape.h" />
     <ClInclude Include="stb_image.h" />

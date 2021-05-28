@@ -18,7 +18,5 @@ public:
 	glm::vec3 max;
 	
 	std::shared_ptr<Entity> entity;
-	std::shared_ptr<Mesh> mesh;
-	
 };
 

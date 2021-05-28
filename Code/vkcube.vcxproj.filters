@@ -64,6 +64,9 @@
     <ClCompile Include="Cuboid.cpp">
       <Filter>Components\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Rigidbody.cpp">
+      <Filter>Components\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h" />
@@ -130,6 +133,9 @@
       <Filter>Components\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Cuboid.h">
+      <Filter>Components\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Rigidbody.h">
       <Filter>Components\Header Files</Filter>
     </ClInclude>
   </ItemGroup>

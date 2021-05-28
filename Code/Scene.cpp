@@ -23,6 +23,7 @@ that utilizes Vulkan, see more at http://cemu.info
 */
 
 #include "Scene.h"
+#include <iostream>
 
 // This function is found later in the file
 // near the bottom under the destructor
@@ -49,6 +50,11 @@ Scene::Scene()
 	skyEntity->CreateDescriptorSetBasic();
 
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 0, 0), glm::vec3(1, 0.5, 0.5)));
+	rb = std::make_shared<Rigidbody>(cuboids[0]->entity);
+
+	// Get a time for when the scene starts.
+	timePointSceneStart = std::chrono::steady_clock::now();
+	timePointStartOfThisFrame = timePointSceneStart;
 
 	// Demo code for making 2d rectangle.
 	//floor = std::make_unique<Shape>(std::vector<glm::vec3>{ glm::vec3(-10, -10, 0), glm::vec3(1, 1, 1),
@@ -92,7 +98,6 @@ void Scene::Draw()
 }
 
 // used to record time
-float time = 0.0f;
 float angle = 0.0f;
 float dist = 10.0f;
 float adjustZ = 3.0f;
@@ -106,14 +111,20 @@ char LetterToVirtualKey(char letter)
 
 void Scene::Update()
 {
+	// Update timings.
+	timePointStartOfLastFrame = timePointStartOfThisFrame;
+	timePointStartOfThisFrame = std::chrono::steady_clock::now();
+	double dt = LastFrameTime();	// Time since start of last frame in seconds.
+	//std::cout << "Time of last frame: " << dt << " seconds." << std::endl;
+
 	if (!isScenePaused) {
-		time += 1.f / 60.f;
+		
 	}
 
 	CheckKeyboardInput();
 	UpdateCamera();
 	UpdateText();
-	UpdatePhysics();
+	UpdatePhysics(dt);
 
 }
 
@@ -180,12 +191,9 @@ void Scene::CheckKeyboardInput() {
 	}
 }
 
-void Scene::UpdatePhysics() {
+void Scene::UpdatePhysics(double dt) {
 
-	// set up our custom entity
-	//myCustomEntity->pos = glm::vec3(sin(3.14f - time / 6.0f) + 1, 0, cos(3.14f - time / 6.0f));
-	//myCustomEntity->rot.y = -time / 6.0f;
-	//myCustomEntity->scale = glm::vec3(1.0f);
+	rb->Update(dt);
 
 }
 
@@ -233,6 +241,11 @@ Scene::~Scene()
 	delete skyMesh;
 	delete skyTex;
 
+}
+
+double Scene::LastFrameTime()
+{
+	return static_cast<double>((timePointStartOfThisFrame - timePointStartOfLastFrame).count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
 }
 
 Mesh* HitboxMesh(Mesh* base)

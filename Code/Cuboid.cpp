@@ -80,7 +80,7 @@ Cuboid::Cuboid(glm::vec3 center, glm::vec3 halfwidth, glm::vec3 color)
 	assignToVertex(vertexList[35].position, 0, 1, 1);
 
 	// Generate the mesh based on the input and created vertex color list.
-	mesh = std::make_shared<Mesh>(vertexList, 36);
+	//std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(vertexList, 36);
 
 	// do NOT delete colorList, it will
 	// be deleted automatically after it
@@ -89,7 +89,7 @@ Cuboid::Cuboid(glm::vec3 center, glm::vec3 halfwidth, glm::vec3 color)
 
 	// create an entity for the mesh
 	entity = std::make_shared<Entity>();
-	entity->mesh = mesh.get();
+	entity->mesh = new Mesh(vertexList, 36);	// Entity takes care of destruction.
 	entity->CreateDescriptorSetColor();
 
 }
