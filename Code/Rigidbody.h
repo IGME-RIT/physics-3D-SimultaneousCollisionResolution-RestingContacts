@@ -38,6 +38,11 @@ public:
 
 	void Update(double dt);
 
+
+	// Get the axis represented by the given number (0 <= best <= 2).
+	glm::vec3 GetAxis(unsigned best) const;
+	const glm::mat4& GetModelMatrix() const;
+
 	std::shared_ptr<Entity> GetEntity() const;
 	const glm::vec3& GetMin() const;
 	const glm::vec3& GetMax() const;

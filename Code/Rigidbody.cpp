@@ -41,6 +41,16 @@ void Rigidbody::Update(double h)
 	p = p_next;
 }
 
+glm::vec3 Rigidbody::GetAxis(unsigned best) const {
+	// We take modulo 3 to account for second set of axis (so 3 should map to 0, 4 should map to 1, etc.)
+	return static_cast<glm::vec3>(entity->GetModelMatrix()[best % 3]);
+}
+const glm::mat4& Rigidbody::GetModelMatrix() const
+{
+	return entity->GetModelMatrix();
+}
+;
+
 std::shared_ptr<Entity> Rigidbody::GetEntity() const { return entity; }
 
 const glm::vec3& Rigidbody::GetMin() const { return min; }

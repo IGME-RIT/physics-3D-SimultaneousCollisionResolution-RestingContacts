@@ -11,17 +11,60 @@
 #include "Rigidbody.h"
 
 namespace Collisions {
+	// Class to store a contact point. This gets used by ContactData which stores contact points.
+	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/contacts.h#L59
+	class Contact {
+	public:
+		glm::vec3 contactPoint;
+		glm::vec3 contactNormal;
+		float penetrationDepth;
+	};
+
+	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/collide_fine.h#L183
+	class ContactData {
+	public:
+		Contact* contacts;
+		unsigned numOfContacts;
+		void AddContacts(unsigned count) {
+			numOfContacts += count;
+		}
+	};
 
 	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
 	bool BoxBox (
 		const Rigidbody& one,
-		const Rigidbody& two
+		const Rigidbody& two,
+		Collisions::ContactData* data
 	);
+
 }
 
 // Private namespace for helper functions.
 namespace {
+	inline glm::vec3 contactPoint(
+		const glm::vec3& pOne,
+		const glm::vec3& dOne,
+		float oneSize,
+		const glm::vec3& pTwo,
+		const glm::vec3& dTwo,
+		float twoSize,
+
+		// If this is true, and the contact point is outside
+		// the edge (in the case of an edge-face contact) then
+		// we use one's midpoint, otherwise we use two's.
+		bool useOne
+	);
+
+	inline void fillPointFaceBoxBox(
+		const Rigidbody& one,
+		const Rigidbody& two,
+		const glm::vec3& toCenter,
+		Collisions::ContactData* data,
+		unsigned best,
+		float pen
+	);
+
 	inline float projectOnAxis(
 		const Rigidbody& rb,
 		const glm::mat3& model,
