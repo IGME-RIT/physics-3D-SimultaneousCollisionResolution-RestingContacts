@@ -12,16 +12,16 @@ namespace Collisions {
 
 	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
-	bool BoxBox (
+	bool Collisions::BoxBox (
 		const Rigidbody& one,
 		const Rigidbody& two,
-		Collisions::ContactData* data
+		Collisions::CollisionData* data
 	)
 	{
 		// Update the model matrices of each rigidbody (not sure if necessary).
 		const glm::mat3 oneModel = (glm::mat3) one.GetEntity()->GetModelMatrix();
 		const glm::mat3 twoModel = (glm::mat3) two.GetEntity()->GetModelMatrix();
-		const glm::vec3 toCenter = two.GetCenter() - one.GetCenter();
+		const glm::vec3 toCenter = two.GetEntity()->GetWorldPosition() - one.GetEntity()->GetWorldPosition();
 
 		// We assume they aren't penetrating to start.
 		float pen = FLT_MAX;		// Amount the objects are penetrating
@@ -113,6 +113,7 @@ namespace Collisions {
 			// We can fill the contact.
 			Contact* contact = data->contacts;
 
+
 			contact->penetrationDepth = pen;
 			contact->contactNormal = axis;
 			contact->contactPoint = vertex;
@@ -190,7 +191,7 @@ namespace {
 		const Rigidbody& one,
 		const Rigidbody& two,
 		const glm::vec3& toCenter,
-		Collisions::ContactData* data,
+		Collisions::CollisionData* data,
 		unsigned best,
 		float pen
 	)
@@ -227,9 +228,9 @@ namespace {
 	{
 		// Might be able to optimize this, not sure.
 		return
-			rb.GetHalfwidth().x + glm::abs(glm::dot(glm::fastNormalize(model[0]), axis)) +
-			rb.GetHalfwidth().y + glm::abs(glm::dot(glm::fastNormalize(model[1]), axis)) +
-			rb.GetHalfwidth().z + glm::abs(glm::dot(glm::fastNormalize(model[2]), axis));
+			rb.GetHalfwidth().x * glm::abs(glm::dot(glm::fastNormalize(model[0]), axis)) +
+			rb.GetHalfwidth().y * glm::abs(glm::dot(glm::fastNormalize(model[1]), axis)) +
+			rb.GetHalfwidth().z * glm::abs(glm::dot(glm::fastNormalize(model[2]), axis));
 	}
 
 
@@ -258,7 +259,7 @@ namespace {
 
 	// Function that determinees if the two input rigidbodies are colliding along the given axis.
 	// Taken from https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L285
-	inline bool tryAxis(
+	bool tryAxis(
 		const Rigidbody& one,
 		const glm::mat3& oneModel,
 		const Rigidbody& two,
@@ -272,7 +273,7 @@ namespace {
 	)
 	{
 		// Make sure the given axis wasn't generated from two near parallel axes.
-		if (glm::length2(axis) > 0.001) return true;
+		if (glm::length2(axis) < 0.001) return true;
 		axis = glm::normalize(axis);
 
 		float penetration = penetrationOnAxis(one, oneModel, two, twoModel, axis, toCenter);

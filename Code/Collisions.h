@@ -21,12 +21,34 @@ namespace Collisions {
 	};
 
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/collide_fine.h#L183
-	class ContactData {
+	class CollisionData {
 	public:
-		Contact* contacts;
-		unsigned numOfContacts;
+		Contact* contactArray;		// Points to the first element of the array.
+		Contact* contacts;			// Points to the next blank element of the array.
+		int contactsLeft;			// Number of remaining contacts the array can take.
+		unsigned numOfContacts;		// Total number of contacts already in the array.
+		
+		CollisionData(unsigned maxContacts) {
+			contactArray = new Contact[maxContacts];
+			contacts = contactArray;
+			contactsLeft = maxContacts;
+			numOfContacts = 0;
+		}
+		~CollisionData() {
+			delete[] contactArray;
+			contactArray = nullptr;
+			contacts = nullptr;
+		}
+
 		void AddContacts(unsigned count) {
+			contactsLeft -= count;
 			numOfContacts += count;
+
+			contacts += count;	// Move array forward.
+		}
+
+		bool IsFull() {
+			return contactsLeft <= 0;
 		}
 	};
 
@@ -35,7 +57,7 @@ namespace Collisions {
 	bool BoxBox (
 		const Rigidbody& one,
 		const Rigidbody& two,
-		Collisions::ContactData* data
+		Collisions::CollisionData* data
 	);
 
 }
@@ -60,7 +82,7 @@ namespace {
 		const Rigidbody& one,
 		const Rigidbody& two,
 		const glm::vec3& toCenter,
-		Collisions::ContactData* data,
+		Collisions::CollisionData* data,
 		unsigned best,
 		float pen
 	);

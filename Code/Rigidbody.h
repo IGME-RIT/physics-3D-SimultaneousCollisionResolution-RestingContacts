@@ -14,7 +14,8 @@ class Rigidbody
 {
 private:
 
-	std::shared_ptr<Entity> entity;
+	std::vector<std::shared_ptr<Entity>> entities;
+	std::shared_ptr<Entity> entity;	// First entity in the array.
 
 	// Physics related attributes (double precision).
 	glm::dvec3 a = glm::dvec3(0);	// Acceleration
@@ -24,7 +25,7 @@ private:
 	float gravity = -1.0f;
 
 	// Flags for this object (can create bitwise flags if enough show up)
-	bool isMovable;
+	bool isMovable = true;
 
 	// Mesh related attributes (held in this class as vec3 instead of float arrays).
 	glm::vec3 min;
@@ -33,9 +34,14 @@ private:
 	glm::vec3 halfwidth;
 
 public:
+	// Constructor to initialize one rigidbody for multiple entities (the entities will all move the same).
+	// Used in cases such as having an object and its OBB moving at the same time.
+	Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable = true);
+
 	// Create a rigidbody from the given entity (if using cuboid, just pass entity).
 	Rigidbody(std::shared_ptr<Entity> entity, bool isMovable = true);
 
+	// Update the physics.
 	void Update(double dt);
 
 
@@ -44,6 +50,7 @@ public:
 	const glm::mat4& GetModelMatrix() const;
 
 	std::shared_ptr<Entity> GetEntity() const;
+	unsigned GetEntityCount() const;
 	const glm::vec3& GetMin() const;
 	const glm::vec3& GetMax() const;
 	const glm::vec3& GetCenter() const;

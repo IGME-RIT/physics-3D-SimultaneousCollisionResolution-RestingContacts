@@ -40,7 +40,7 @@ private:
 
 	// Custom shapes.
 	std::vector<std::shared_ptr<Cuboid>> cuboids;
-	std::shared_ptr<Rigidbody> rb;
+	std::vector<std::shared_ptr<Rigidbody>> rigidbodies;
 
 	// Timing variables
 	bool isScenePaused = false;

@@ -4,15 +4,21 @@
 #include <iostream>
 #include <glm/gtc/type_ptr.hpp> // Used for glm::make_vec3, which converts from float* to glm::vec3.
 
-Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable)
-{
-	assert(entity->mesh != nullptr);
+// Constructor delegation.
+Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable) : Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>>{entity}, isMovable) {}
 
-	this->entity = entity;
+Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable)
+{
+	assert(entities.size() > 0);
+
+	this->entities = entities;
 	this->isMovable = isMovable;
+	// We assume that the first entity is the primary.
+	this->entity = entities[0];
+
 	this->p = this->entity->pos;
-	
-	// Assign all of the mesh variables.
+
+	// Assign all of the mesh variables (we use the things from the first entity)..
 	const Mesh& mesh = *(entity->mesh);
 	this->min = glm::make_vec3(mesh.min);
 	this->max = glm::make_vec3(mesh.max);
@@ -33,8 +39,12 @@ void Rigidbody::Update(double h)
 	glm::dvec3 v_next = v + a * h;
 	glm::dvec3 p_next = p + v * h;
 
+
 	// Apply the position to the entity.
-	entity->pos = p_next;
+	for (std::shared_ptr<Entity> entity : entities) {
+		entity->pos = p_next;
+	}
+	
 
 	// Replace past values with new values.
 	v = v_next;
@@ -52,6 +62,7 @@ const glm::mat4& Rigidbody::GetModelMatrix() const
 ;
 
 std::shared_ptr<Entity> Rigidbody::GetEntity() const { return entity; }
+unsigned Rigidbody::GetEntityCount() const { return entities.size(); }
 
 const glm::vec3& Rigidbody::GetMin() const { return min; }
 const glm::vec3& Rigidbody::GetMax() const { return max; }

@@ -49,8 +49,11 @@ Scene::Scene()
 	skyEntity->texture[0] = skyTex;
 	skyEntity->CreateDescriptorSetBasic();
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 0, 0), glm::vec3(1, 0.5, 0.5)));
-	rb = std::make_shared<Rigidbody>(cuboids[0]->entity);
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 3, 0), glm::vec3(1, 0.5, 0.5), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
+
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -2, 0), glm::vec3(10, 0.5, 10), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), false));
 
 	// Get a time for when the scene starts.
 	timePointSceneStart = std::chrono::steady_clock::now();
@@ -80,10 +83,9 @@ void Scene::Draw()
 	// but you can't draw the same entity twice.
 	// The Demo system will actually block you from trying
 
-	// Color pipeline
-	d->ApplyPipelineColor();
+	// Color pipeline	
 	for (auto cuboidPtr : cuboids) {
-		d->DrawEntity(cuboidPtr->entity.get());
+		cuboidPtr->Draw(d);
 	}
 
 	// Bind the sky pipeline
@@ -117,14 +119,14 @@ void Scene::Update()
 	double dt = LastFrameTime();	// Time since start of last frame in seconds.
 	//std::cout << "Time of last frame: " << dt << " seconds." << std::endl;
 
-	if (!isScenePaused) {
-		
-	}
-
 	CheckKeyboardInput();
 	UpdateCamera();
 	UpdateText();
-	UpdatePhysics(dt);
+	if (!isScenePaused) {
+		UpdatePhysics(dt);
+	}
+
+	
 
 }
 
@@ -193,7 +195,16 @@ void Scene::CheckKeyboardInput() {
 
 void Scene::UpdatePhysics(double dt) {
 
-	rb->Update(dt);
+	for (std::shared_ptr<Rigidbody> rb : rigidbodies) {
+		rb->Update(dt);
+	}
+
+	// Check collisions.
+	std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(8);
+	Collisions::BoxBox(*rigidbodies[0].get(), *rigidbodies[1].get(), data.get());
+	if (data->numOfContacts > 0) {
+		cuboids[0]->wireEntity->color = glm::vec3(1, 0, 0); 
+	}
 }
 
 void Scene::UpdateCamera() {
