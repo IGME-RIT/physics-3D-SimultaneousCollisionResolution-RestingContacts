@@ -214,7 +214,8 @@ namespace {
 		contact->contactNormal = normal;
 		contact->penetrationDepth = pen;
 		// Convert from local space to world, accounting for translations.
-		contact->contactPoint = static_cast<glm::vec3>(two.GetModelMatrix() * glm::vec4(vertex, 1));
+		glm::mat4 twoModelMatrix = two.GetModelMatrix();	// Make copy of the matrix.
+		contact->contactPoint = static_cast<glm::vec3>(twoModelMatrix * glm::vec4(vertex, 1));
 
 	}
 

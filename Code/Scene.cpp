@@ -52,7 +52,7 @@ Scene::Scene()
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 3, 0), glm::vec3(1, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -2, 0), glm::vec3(10, 0.5, 10), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(2, -2, 0.5f), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), false));
 
 	// Get a time for when the scene starts.
