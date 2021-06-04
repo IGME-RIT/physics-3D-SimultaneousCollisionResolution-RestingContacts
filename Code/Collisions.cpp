@@ -2,6 +2,7 @@
 #include "Collisions.h"
 #include "glm/gtx/norm.hpp"	// Some "experimental" math functions (aka I'm too lazy to code square length myself, glm::length2)
 #include "glm/gtx/normalize_dot.hpp" // For fastNormalize.
+#include "GTE/Mathematics/LCPSolver.h"	// LCP solver :)
 
 // THINGS TO DO
 // Implement collision data class.
