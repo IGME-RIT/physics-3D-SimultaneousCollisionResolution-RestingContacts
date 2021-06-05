@@ -16,14 +16,28 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	// We assume that the first entity is the primary.
 	this->entity = entities[0];
 
-	this->p = this->entity->pos;
-
-	// Assign all of the mesh variables (we use the things from the first entity)..
+	// Assign all of the mesh variables (we use the things from the first entity).
 	const Mesh& mesh = *(entity->mesh);
 	this->min = glm::make_vec3(mesh.min);
 	this->max = glm::make_vec3(mesh.max);
 	this->center = glm::make_vec3(mesh.center);
 	this->halfwidth = glm::make_vec3(mesh.halfwidth);
+
+	// Assume that we dealing with cuboids.
+	this->mass = 1;
+	this->momentOfInertia = glm::mat3(
+		mass * (glm::pow(halfwidth.y * 2.f, 2) + glm::pow(halfwidth.z * 2.f, 2)) / 12.f, 0, 0,
+		0, mass * (glm::pow(halfwidth.x * 2.f, 2) + glm::pow(halfwidth.z * 2.f, 2)) / 12.f, 0,
+		0, 0, mass * (glm::pow(halfwidth.x * 2.f, 2) + glm::pow(halfwidth.y * 2.f, 2)) / 12.f
+	);
+	this->inverseMomentOfInertia = glm::inverse(momentOfInertia);	// This can be optimized.
+
+	// Assign the state.
+	this->currentState = State(this->entity->pos, glm::quat(), glm::vec3(0), glm::vec3(0));
+	this->computedState = this->currentState;
+	this->newState = this->currentState;
+
+	AddForce(glm::vec3(0, gravity, 0));
 }
 
 void Rigidbody::Update(double h)
@@ -33,34 +47,71 @@ void Rigidbody::Update(double h)
 	 *  Movement Section
  	 */
 	if (!isMovable) return;
-	a = glm::dvec3(0, gravity, 0);
 
-	// Apply gravity
-	glm::dvec3 v_next = v + a * h;
-	glm::dvec3 p_next = p + v * h;
-
+	// Compute the next state.
+	computedState = currentState.ComputeRigidDerivative(mass, inverseMomentOfInertia, forces);
+	newState = currentState + computedState * h;
+	newState.orientation = glm::normalize(newState.orientation);
 
 	// Apply the position to the entity.
 	for (std::shared_ptr<Entity> entity : entities) {
-		entity->pos = p_next;
+		entity->pos = newState.pos;
 	}
 	
-
 	// Replace past values with new values.
-	v = v_next;
-	p = p_next;
+	currentState = newState;
 }
 
+void Rigidbody::AddForce(glm::vec3 forceVector)
+{
+	Force force;
+	force.force = forceVector;
+	forces.push_back(std::move(force));
+}
+
+void Rigidbody::AddForce(glm::vec3 forceVector, glm::vec3 position)
+{
+	Force force;
+	force.force = forceVector;
+	force.position = position;
+	force.hasPosition = true;
+	forces.push_back(std::move(force));
+}
+Rigidbody::State Rigidbody::State::ComputeRigidDerivative(float mass, glm::mat3 inverseMomentOfIntertia, std::vector<Force> forces)
+{
+	State S;	// State to return.
+	S.pos = this->momentum / mass;
+
+	// Calculate new orientation.
+	glm::mat3 R = glm::toMat3(orientation);
+	glm::mat3 worldI = R * inverseMomentOfIntertia * glm::transpose(R);
+	glm::vec3 omega = worldI * angularMomentum;
+	glm::quat omega_p = glm::quat(0, omega);
+	S.orientation = 0.5f * omega_p * this->orientation;
+
+	// Calculate forces.
+	S.momentum = S.angularMomentum = glm::vec3(0);
+	for (Force force : forces) {
+		S.momentum += force.force;
+		// If the force has a position, it affects torque.
+		if (force.hasPosition == true) {
+			glm::vec3 r = force.position - S.pos;
+			S.angularMomentum += glm::cross(r, force.force);
+		}
+	}
+
+	return S;
+}
+
+
+
+
+#pragma region Getters and Setters
 glm::vec3 Rigidbody::GetAxis(unsigned best) const {
 	// We take modulo 3 to account for second set of axis (so 3 should map to 0, 4 should map to 1, etc.)
 	return static_cast<glm::vec3>(entity->GetModelMatrix()[best % 3]);
 }
-const glm::mat4& Rigidbody::GetModelMatrix() const
-{
-	return entity->GetModelMatrix();
-}
-;
-
+const glm::mat4& Rigidbody::GetModelMatrix() const { return entity->GetModelMatrix(); }
 std::shared_ptr<Entity> Rigidbody::GetEntity() const { return entity; }
 unsigned Rigidbody::GetEntityCount() const { return entities.size(); }
 
@@ -68,3 +119,5 @@ const glm::vec3& Rigidbody::GetMin() const { return min; }
 const glm::vec3& Rigidbody::GetMax() const { return max; }
 const glm::vec3& Rigidbody::GetCenter() const { return center; }
 const glm::vec3& Rigidbody::GetHalfwidth() const { return halfwidth; }
+#pragma endregion Getters and Setters
+
