@@ -33,6 +33,7 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	this->inverseMomentOfInertia = glm::inverse(momentOfInertia);	// This can be optimized.
 
 	// Assign the state.
+	//this->currentState = Rigidbody::State(this->entity->pos, glm::quat(), glm::vec3(0), glm::vec3(0));
 	this->currentState = Rigidbody::State(this->entity->pos, glm::quat(), glm::vec3(0), glm::vec3(0));
 	this->computedState = this->currentState;
 	this->newState = this->currentState;

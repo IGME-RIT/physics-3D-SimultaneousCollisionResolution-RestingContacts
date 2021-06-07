@@ -27,9 +27,9 @@ struct sprite_struct
 	int text[100];
 };
 
-Entity::Entity()
+Entity::Entity(glm::vec3 position)
 {
-	pos = glm::vec3(0);
+	pos = position;
 	//rot = glm::vec3(0);
 	rotQuat = glm::quat();
 	scale = glm::vec3(1);
@@ -652,6 +652,7 @@ glm::mat4 Entity::GetModelMatrix()
 	glm::mat4 model = parentModelMatrix;
 	model = glm::translate(model, pos);
 	model = model * glm::toMat4(rotQuat);
+	//model = glm::translate(model, -pos);
 	//model = glm::rotate(model, rot.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
 	//model = glm::rotate(model, rot.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
 	//model = glm::rotate(model, rot.z, glm::vec3{ 0.0f, 0.0f, 1.0f });

@@ -52,7 +52,7 @@ public:
 	glm::mat4 GetModelMatrix();
 	glm::vec3 GetWorldPosition();
 
-	Entity();
+	Entity(glm::vec3 position = glm::vec3(0));
 	~Entity();
 
 	void CreateDescriptorSetColor();

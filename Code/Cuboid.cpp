@@ -5,8 +5,8 @@ Cuboid::Cuboid(glm::vec3 center, glm::vec3 halfwidth, glm::vec3 color)
 {
 	this->center = center;
 	this->halfwidth = halfwidth;
-	this->min = center - halfwidth;
-	this->max = center + halfwidth;
+	this->min = -halfwidth;
+	this->max = halfwidth;
 
 	/*
 	 *   Solid cuboid generation.
@@ -92,7 +92,7 @@ Cuboid::Cuboid(glm::vec3 center, glm::vec3 halfwidth, glm::vec3 color)
 	// BufferCPU / BufferGPU system
 
 	// create an entity for the mesh
-	solidEntity = std::make_shared<Entity>();
+	solidEntity = std::make_shared<Entity>(center);
 	solidEntity->mesh = new Mesh(vertexList, 36);	// Entity takes care of destruction.
 	solidEntity->CreateDescriptorSetColor();
 
@@ -186,7 +186,7 @@ Cuboid::Cuboid(glm::vec3 center, glm::vec3 halfwidth, glm::vec3 color)
 	WireList[18].position[1] = max[1];
 	WireList[18].position[2] = max[2];
 
-	wireEntity = std::make_shared<Entity>();
+	wireEntity = std::make_shared<Entity>(center);
 	wireEntity->mesh = new Mesh(WireList, 19);	// Entity takes care of destruction.
 	wireEntity->CreateDescriptorSetWire();
 	wireEntity->color = glm::vec3(0, 1, 0);
