@@ -43,7 +43,10 @@ public:
 		State operator* (const float& scalar) const { return State(scalar * pos, scalar * orientation, scalar * momentum, scalar * angularMomentum); }
 
 		// Main function of the struct, inverse moment of inertia is in local space.
-		State ComputeRigidDerivative(float mass, glm::mat3 inverseMomentOfIntertia, std::vector<Rigidbody::Force> forces);
+		State ComputeRigidDerivative(float mass,
+			glm::mat3 inverseMomentOfIntertia,
+			std::vector<Rigidbody::Force> forces,
+			std::vector<Rigidbody::Force> constantForces);
 	};
 
 private:
@@ -58,7 +61,8 @@ private:
 	float mass;
 	glm::mat3 momentOfInertia;
 	glm::mat3 inverseMomentOfInertia;
-	std::vector<Force> forces;	// List of forces currently being applied to the object (cleared every frame).
+	std::vector<Force> forces;	// List of forces currently being applied to the object (cleared every frame). Impulses.
+	std::vector<Force> constantForces; // List of forces that are applied to object every frame (like gravity). Not cleared at the end of the frame.
 
 	//glm::dvec3 a = glm::dvec3(0);	// Acceleration
 	//glm::dvec3 v = glm::dvec3(0);	// Velocity
@@ -90,7 +94,7 @@ public:
 	// Add a force to the rigidbody.
 	void AddForce(glm::vec3 forceVector);
 	void AddForce(glm::vec3 forceVector, glm::vec3 position);
-
+	void AddConstantForce(glm::vec3 forceVector);	// I don't think there's any constant point forces?
 
 	// Get the axis represented by the given number (0 <= best <= 2).
 	glm::vec3 GetAxis(unsigned best) const;

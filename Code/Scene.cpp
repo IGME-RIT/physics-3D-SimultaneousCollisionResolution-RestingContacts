@@ -205,6 +205,9 @@ void Scene::UpdatePhysics(double dt) {
 	if (data->numOfContacts > 0) {
 		cuboids[0]->wireEntity->color = glm::vec3(1, 0, 0); 
 	}
+	else {
+		cuboids[0]->wireEntity->color = glm::vec3(0, 1, 0);
+	}
 }
 
 void Scene::UpdateCamera() {

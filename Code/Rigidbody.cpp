@@ -33,11 +33,11 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	this->inverseMomentOfInertia = glm::inverse(momentOfInertia);	// This can be optimized.
 
 	// Assign the state.
-	this->currentState = State(this->entity->pos, glm::quat(), glm::vec3(0), glm::vec3(0));
+	this->currentState = Rigidbody::State(this->entity->pos, glm::quat(), glm::vec3(0), glm::vec3(0));
 	this->computedState = this->currentState;
 	this->newState = this->currentState;
 
-	AddForce(glm::vec3(0, gravity, 0));
+	AddConstantForce(glm::vec3(0, gravity, 0));
 }
 
 void Rigidbody::Update(double h)
@@ -49,7 +49,7 @@ void Rigidbody::Update(double h)
 	if (!isMovable) return;
 
 	// Compute the next state.
-	computedState = currentState.ComputeRigidDerivative(mass, inverseMomentOfInertia, forces);
+	computedState = currentState.ComputeRigidDerivative(mass, inverseMomentOfInertia, forces, constantForces);
 	newState = currentState + computedState * h;
 	newState.orientation = glm::normalize(newState.orientation);
 
@@ -77,7 +77,20 @@ void Rigidbody::AddForce(glm::vec3 forceVector, glm::vec3 position)
 	force.hasPosition = true;
 	forces.push_back(std::move(force));
 }
-Rigidbody::State Rigidbody::State::ComputeRigidDerivative(float mass, glm::mat3 inverseMomentOfIntertia, std::vector<Force> forces)
+
+void Rigidbody::AddConstantForce(glm::vec3 forceVector)
+{
+	Force force;
+	force.force = forceVector;
+	constantForces.push_back(std::move(force));
+}
+
+Rigidbody::State Rigidbody::State::ComputeRigidDerivative(
+	float mass, 
+	glm::mat3 inverseMomentOfIntertia, 
+	std::vector<Force> forces, 
+	std::vector<Force> constantForces
+)
 {
 	State S;	// State to return.
 	S.pos = this->momentum / mass;
@@ -91,6 +104,7 @@ Rigidbody::State Rigidbody::State::ComputeRigidDerivative(float mass, glm::mat3 
 
 	// Calculate forces.
 	S.momentum = S.angularMomentum = glm::vec3(0);
+	// Apply impulses.
 	for (Force force : forces) {
 		S.momentum += force.force;
 		// If the force has a position, it affects torque.
@@ -98,6 +112,10 @@ Rigidbody::State Rigidbody::State::ComputeRigidDerivative(float mass, glm::mat3 
 			glm::vec3 r = force.position - S.pos;
 			S.angularMomentum += glm::cross(r, force.force);
 		}
+	}
+	// Apply constant forces.
+	for (Force force : constantForces) {
+		S.momentum += force.force;
 	}
 
 	return S;

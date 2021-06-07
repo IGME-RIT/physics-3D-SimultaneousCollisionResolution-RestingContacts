@@ -67,9 +67,6 @@
     <ClCompile Include="Demo.cpp">
       <Filter>Vulkan Files</Filter>
     </ClCompile>
-    <ClCompile Include="Collisions.h">
-      <Filter>Managers\Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="Collisions.cpp">
       <Filter>Managers\Source Files</Filter>
     </ClCompile>
@@ -143,6 +140,9 @@
     </ClInclude>
     <ClInclude Include="Demo.h">
       <Filter>Vulkan Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Collisions.h">
+      <Filter>Managers\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
