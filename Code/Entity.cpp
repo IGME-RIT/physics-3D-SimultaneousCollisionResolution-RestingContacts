@@ -30,7 +30,8 @@ struct sprite_struct
 Entity::Entity()
 {
 	pos = glm::vec3(0);
-	rot = glm::vec3(0);
+	//rot = glm::vec3(0);
+	rotQuat = glm::quat();
 	scale = glm::vec3(1);
 	color = glm::vec3(0);
 
@@ -646,126 +647,14 @@ void Entity::Update()
 	}
 }
 
-// Pulling optimized SAT from Morgan Kaufmann Series in Interactive 3D Technology textbook, with slight changes.
-bool Entity::SeperatingAxisTest(Entity* const other)
-{
-	// If either entity is not on the CPU, don't check for collision.
-	if (this->matrixBufferCPU == nullptr || other->matrixBufferCPU == nullptr)
-		return false;
-
-	glm::mat3 R, AbsR;						// Compute rotation matrix expressing b in a’s coordinate frame
-	glm::vec3 aHalf, bHalf;					// Positive halfwidth extents of OBB along each axis.
-	glm::mat3 aModelMatrix, bModelMatrix;	// Rotational portion of model matrices.
-
-	// Must multiply by scale as halfwidth of mesh does not account for scaling of entity.
-	aHalf = glm::vec3(this->mesh->halfwidth[0], this->mesh->halfwidth[1], this->mesh->halfwidth[2]) * (this->scale);
-	bHalf = glm::vec3(other->mesh->halfwidth[0], other->mesh->halfwidth[1], other->mesh->halfwidth[2]) * (other->scale);
-	
-	// Get the rotation matrix for each entity (doing manually to avoid scaling from the model matrix)
-	glm::mat4 model = this->parentModelMatrix;
-	model = glm::rotate(model, this->rot.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
-	model = glm::rotate(model, this->rot.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
-	model = glm::rotate(model, this->rot.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
-	aModelMatrix = static_cast<glm::mat3>(model);
-
-	model = other->parentModelMatrix;
-	model = glm::rotate(model, other->rot.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
-	model = glm::rotate(model, other->rot.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
-	model = glm::rotate(model, other->rot.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
-	bModelMatrix = static_cast<glm::mat3>(model);
-
-	// Create matrix to move from b's local space to a's local space.
-	for(int i = 0; i < 3 ; i++)
-		for(int j = 0; j < 3; j++)
-			R[i][j] = glm::dot(aModelMatrix[i], bModelMatrix[j]);
-
-	// Compute translation vector t (distance between centers, not center bottom).
-	glm::vec3 aCenter = this->GetWorldPosition();
-	glm::vec3 bCenter = other->GetWorldPosition();
-
-
-	glm::vec3 t = bCenter - aCenter;
-	// Bring translation into a’s coordinate frame
-	t = t * aModelMatrix;	// same as inverse(aModelMatrix) * t
-
-	// Compute common subexpressions. Add in an epsilon term to
-	// counteract arithmetic errors when two edges are parallel and
-	// their cross product is (near) null (see text for details)
-	for(int i = 0; i < 3; i++)
-		for(int j = 0; j < 3; j++)
-			AbsR[i][j] = glm::abs(R[i][j]) + FLT_EPSILON;
-
-	float ra, rb;		// Projected halfwidth distances. 
-
-	// Test axes L=A0, L=A1, L=A2
-	for(int i = 0; i < 3; i++) {
-		ra = aHalf[i];
-		rb = bHalf[0] * AbsR[i][0] + bHalf[1] * AbsR[i][1] + bHalf[2] * AbsR[i][2];
-		if (glm::abs(t[i]) > ra + rb) return 0;
-	}
-	// Test axes L=B0, L=B1, L=B2
-	for(int i = 0; i < 3; i++) {
-		ra = aHalf[0] * AbsR[0][i] + aHalf[1] * AbsR[1][i] + aHalf[2] * AbsR[2][i];
-		rb = bHalf[i];
-		if (glm::abs(t[0] * R[0][i] + t[1] * R[1][i] + t[2] * R[2][i]) > ra + rb) return 0;
-	}
-
-	// Test axis L=A0xB0
-	ra = aHalf[1] * AbsR[2][0] + aHalf[2] * AbsR[1][0];
-	rb = bHalf[1] * AbsR[0][2] + bHalf[2] * AbsR[0][1];
-	if (glm::abs(t[2] * R[1][0] - t[1] * R[2][0]) > ra + rb) return 0;
-	
-	// Test axis L=A0xB1
-	ra = aHalf[1] * AbsR[2][1] + aHalf[2] * AbsR[1][1];
-	rb = bHalf[0] * AbsR[0][2] + bHalf[2] * AbsR[0][0];
-	if (glm::abs(t[2] * R[1][1] - t[1] * R[2][1]) > ra + rb) return 0;
-	
-	// Test axis L=A0xB2
-	ra = aHalf[1] * AbsR[2][2] + aHalf[2] * AbsR[1][2];
-	rb = bHalf[0] * AbsR[0][1] + bHalf[1] * AbsR[0][0];
-	if (glm::abs(t[2] * R[1][2] - t[1] * R[2][2]) > ra + rb) return 0;
-	
-	// Test axis L=A1xB0
-	ra = aHalf[0] * AbsR[2][0] + aHalf[2] * AbsR[0][0];
-	rb = bHalf[1] * AbsR[1][2] + bHalf[2] * AbsR[1][1];
-	if (glm::abs(t[0] * R[2][0] - t[2] * R[0][0]) > ra + rb) return 0;
-	
-	// Test axis L=A1xB1
-	ra = aHalf[0] * AbsR[2][1] + aHalf[2] * AbsR[0][1];
-	rb = bHalf[0] * AbsR[1][2] + bHalf[2] * AbsR[1][0];
-	if (glm::abs(t[0] * R[2][1] - t[2] * R[0][1]) > ra + rb) return 0;
-	
-	// Test axis L=A1xB2
-	ra = aHalf[0] * AbsR[2][2] + aHalf[2] * AbsR[0][2];
-	rb = bHalf[0] * AbsR[1][1] + bHalf[1] * AbsR[1][0];
-	if (glm::abs(t[0] * R[2][2] - t[2] * R[0][2]) > ra + rb) return 0;
-	
-	// Test axis L=A2xB0
-	ra = aHalf[0] * AbsR[1][0] + aHalf[1] * AbsR[0][0];
-	rb = bHalf[1] * AbsR[2][2] + bHalf[2] * AbsR[2][1];
-	if (glm::abs(t[1] * R[0][0] - t[0] * R[1][0]) > ra + rb) return 0;
-	
-	// Test axis L=A2xB1
-	ra = aHalf[0] * AbsR[1][1] + aHalf[1] * AbsR[0][1];
-	rb = bHalf[0] * AbsR[2][2] + bHalf[2] * AbsR[2][0];
-	if (glm::abs(t[1] * R[0][1] - t[0] * R[1][1]) > ra + rb) return 0;
-	
-	// Test axis L=A2xB2
-	ra = aHalf[0] * AbsR[1][2] + aHalf[1] * AbsR[0][2];
-	rb = bHalf[0] * AbsR[2][1] + bHalf[1] * AbsR[2][0];
-	if (glm::abs(t[1] * R[0][2] - t[0] * R[1][2]) > ra + rb) return 0;
-	
-	// Since no separating axis is found, the OBBs must be intersecting
-	return 1;
-}
-
 glm::mat4 Entity::GetModelMatrix()
 {
 	glm::mat4 model = parentModelMatrix;
 	model = glm::translate(model, pos);
-	model = glm::rotate(model, rot.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
-	model = glm::rotate(model, rot.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
-	model = glm::rotate(model, rot.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
+	model = model * glm::toMat4(rotQuat);
+	//model = glm::rotate(model, rot.y, glm::vec3{ 0.0f, 1.0f, 0.0f });
+	//model = glm::rotate(model, rot.x, glm::vec3{ 1.0f, 0.0f, 0.0f });
+	//model = glm::rotate(model, rot.z, glm::vec3{ 0.0f, 0.0f, 1.0f });
 	model = glm::scale(model, scale);
 	modelMatrix = model;
 

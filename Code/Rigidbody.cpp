@@ -37,7 +37,7 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	this->computedState = this->currentState;
 	this->newState = this->currentState;
 
-	AddConstantForce(glm::vec3(0, gravity, 0));
+	//AddConstantForce(glm::vec3(0, gravity, 0));
 }
 
 void Rigidbody::Update(double h)
@@ -55,11 +55,15 @@ void Rigidbody::Update(double h)
 
 	// Apply the position to the entity.
 	for (std::shared_ptr<Entity> entity : entities) {
+		entity->rotQuat = newState.orientation;
 		entity->pos = newState.pos;
 	}
 	
 	// Replace past values with new values.
 	currentState = newState;
+
+	// Clear the forces vector.
+	forces.clear();
 }
 
 void Rigidbody::AddForce(glm::vec3 forceVector)

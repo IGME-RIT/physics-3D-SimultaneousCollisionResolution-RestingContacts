@@ -153,6 +153,13 @@ void Scene::CheckKeyboardInput() {
 		isScenePaused = false;
 	}
 
+	if (keys['A']) {
+		rigidbodies[0].get()->AddForce(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0));
+	}
+	if (keys['D']) {
+		rigidbodies[0].get()->AddForce(glm::vec3(0, -1, 0), glm::vec3(1, 0, 0));
+	}
+
 
 	if (keys[VK_UP])
 	{
@@ -201,7 +208,7 @@ void Scene::UpdatePhysics(double dt) {
 
 	// Check collisions.
 	std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(8);
-	Collisions::BoxBox(*rigidbodies[0].get(), *rigidbodies[1].get(), data.get());
+	Collisions::BoxBox(*rigidbodies[1].get(), *rigidbodies[0].get(), data.get());
 	if (data->numOfContacts > 0) {
 		cuboids[0]->wireEntity->color = glm::vec3(1, 0, 0); 
 	}
