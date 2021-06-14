@@ -50,11 +50,12 @@ private:
 	std::chrono::steady_clock::time_point timePointSceneStart;
 	std::chrono::steady_clock::time_point timePointStartOfLastFrame;
 	std::chrono::steady_clock::time_point timePointStartOfThisFrame;
-	double lastFramesTime = 0;
+	float lastFramesTime = 0;
+	float totalRunTime = 0;
 
 	// Functions called from Update
 	void CheckKeyboardInput();
-	void UpdatePhysics(double dt);
+	void UpdatePhysics(float dt, float t);
 	void UpdateText();
 	void UpdateCamera();
 
@@ -65,6 +66,6 @@ public:
 	void Update();
 	~Scene();
 
-	double LastFrameTime();
+	void UpdateTimer(float& dt, float& t);
 };
 

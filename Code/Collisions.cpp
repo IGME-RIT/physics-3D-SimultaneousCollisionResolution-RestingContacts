@@ -18,9 +18,9 @@ namespace Collisions {
 	)
 	{
 		// Update the model matrices of each rigidbody (not sure if necessary).
-		const glm::mat3 oneModel = (glm::mat3) one.GetEntity()->GetModelMatrix();
-		const glm::mat3 twoModel = (glm::mat3) two.GetEntity()->GetModelMatrix();
-		const glm::vec3 toCenter = two.GetEntity()->GetWorldPosition() - one.GetEntity()->GetWorldPosition();
+		const glm::mat3 oneModel = (glm::mat3) one.GetModelMatrix();
+		const glm::mat3 twoModel = (glm::mat3) two.GetModelMatrix();
+		const glm::vec3 toCenter = two.m_position - one.m_position;
 
 		// We assume they aren't penetrating to start.
 		float pen = FLT_MAX;		// Amount the objects are penetrating
@@ -84,8 +84,9 @@ namespace Collisions {
 			// its component in the direction of the box's collision axis is zero
 			// (its a mid-point) and we determine which of the extremes in each
 			// of the other axes is closest.
-			glm::vec3 ptOnOneEdge = one.GetHalfwidth();
-			glm::vec3 ptOnTwoEdge = two.GetHalfwidth();
+			glm::vec3 ptOnOneEdge, ptOnTwoEdge;
+			ptOnOneEdge = one.m_halfwidth;
+			ptOnTwoEdge = two.m_halfwidth;
 			for (unsigned i = 0; i < 3; i++)
 			{
 				if (i == oneAxisIndex) ptOnOneEdge[i] = 0;
@@ -97,12 +98,12 @@ namespace Collisions {
 
 			// Get both of the edges as normalized vectors in world space (to pass into the contact).
 			glm::vec3 oneEdge = ptOnOneEdge;
-			oneEdge[oneAxisIndex] = one.GetHalfwidth()[oneAxisIndex];
+			oneEdge[oneAxisIndex] = one.m_halfwidth[oneAxisIndex];
 			oneEdge = static_cast<glm::vec3>(one.GetModelMatrix() * glm::vec4(oneEdge, 0));	// Zero because we care about direction, not location.
 			oneEdge = glm::normalize(oneEdge);
 
 			glm::vec3 twoEdge = ptOnTwoEdge;
-			twoEdge[oneAxisIndex] = two.GetHalfwidth()[twoAxisIndex];
+			twoEdge[oneAxisIndex] = two.m_halfwidth[twoAxisIndex];
 			twoEdge = static_cast<glm::vec3>(two.GetModelMatrix() * glm::vec4(twoEdge, 0));
 			twoEdge = glm::normalize(twoEdge);
 
@@ -116,8 +117,8 @@ namespace Collisions {
 			// We need to find out point of closest approach of the two
 			// line-segments.
 			glm::vec3 vertex = contactPoint(
-				ptOnOneEdge, oneAxis, one.GetHalfwidth()[oneAxisIndex],
-				ptOnTwoEdge, twoAxis, two.GetHalfwidth()[twoAxisIndex],
+				ptOnOneEdge, oneAxis, one.m_halfwidth[oneAxisIndex],
+				ptOnTwoEdge, twoAxis, two.m_halfwidth[twoAxisIndex],
 				bestSingleAxis > 2
 			);
 
@@ -141,10 +142,8 @@ namespace Collisions {
 
 	bool BoundingSphere(const Rigidbody& one, const Rigidbody& two)
 	{
-		glm::vec3 oneCenter = one.GetEntity()->GetWorldPosition();
-		glm::vec3 twoCenter = two.GetEntity()->GetWorldPosition();
 
-		if (glm::length2(twoCenter - oneCenter) > pow(one.GetRadius() + two.GetRadius(), 2))
+		if (glm::length2(two.m_position - one.m_position) > pow(one.m_radius + two.m_radius, 2))
 			return false;
 		return true;
 	}
@@ -170,21 +169,21 @@ namespace Collisions {
 
 				if (ci.bodyOne == cj.bodyOne) {
 					// personal note: massinv is 1/mass, jinv is inverse inertia tensor.
-					A(i, j) += ci.bodyOne->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) += glm::dot(rANi, ci.bodyOne->GetInverseIntertia() * rANj);
+					A(i, j) += ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) += glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
 				}
 				else if (ci.bodyOne == cj.bodyTwo) {
-					A(i, j) -= ci.bodyOne->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) -= glm::dot(rANi, ci.bodyOne->GetInverseIntertia() * rANj);
+					A(i, j) -= ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) -= glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
 				}
 
 				if (ci.bodyTwo == cj.bodyOne) {
-					A(i, j) += ci.bodyTwo->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) += glm::dot(rBNi, ci.bodyTwo->GetInverseIntertia() * rBNj);
+					A(i, j) += ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) += glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
 				}
 				else if (ci.bodyTwo == cj.bodyTwo) {
-					A(i, j) -= ci.bodyTwo->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) -= glm::dot(rBNi, ci.bodyTwo->GetInverseIntertia() * rBNj);
+					A(i, j) -= ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) -= glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
 				}
 			}
 		}
@@ -197,8 +196,8 @@ namespace Collisions {
 		for (int i = 0; i < contacts.size(); i++) {
 			Contact ci = contacts[i];
 			
-			glm::vec3 velA = ci.bodyOne->GetVelocity() + glm::cross(ci.bodyOne->GetAngularVelocity(), ci.contactPoint - ci.bodyOne->GetPosition());
-			glm::vec3 velB = ci.bodyTwo->GetVelocity() + glm::cross(ci.bodyTwo->GetAngularVelocity(), ci.contactPoint - ci.bodyTwo->GetPosition());
+			glm::vec3 velA = ci.bodyOne->m_velocity + glm::cross(ci.bodyOne->m_angularVelocity, ci.contactPoint - ci.bodyOne->m_position);
+			glm::vec3 velB = ci.bodyTwo->m_velocity + glm::cross(ci.bodyTwo->m_angularVelocity, ci.contactPoint - ci.bodyTwo->m_position);
 			ddot[i] = glm::dot(ci.contactNormal, velA - velB);
 		}
 
@@ -212,29 +211,29 @@ namespace Collisions {
 			Rigidbody* B = ci.bodyTwo;
 
 			// Body one terms.
-			glm::vec3 rAi = ci.contactPoint - A->GetPosition();
-			glm::vec3 wAxrAi = glm::cross(A->GetAngularVelocity(), rAi);
-			glm::vec3 At1 = A->GetInverseMass() * A->GetForce();
-			glm::vec3 At2 = glm::cross(A->GetInverseIntertia() * (A->GetTorque() + glm::cross(A->GetAngularMomentum(), A->GetAngularVelocity())), rAi);
-			glm::vec3 At3 = glm::cross(A->GetAngularVelocity(), wAxrAi);
-			glm::vec3 At4 = A->GetVelocity() + wAxrAi;
+			glm::vec3 rAi = ci.contactPoint - A->m_position;
+			glm::vec3 wAxrAi = glm::cross(A->m_angularVelocity, rAi);
+			glm::vec3 At1 = A->m_invMass * A->m_externalForce;
+			glm::vec3 At2 = glm::cross(A->m_invInertia * (A->m_externalTorque + glm::cross(A->m_angularMomentum, A->m_angularVelocity)), rAi);
+			glm::vec3 At3 = glm::cross(A->m_angularVelocity, wAxrAi);
+			glm::vec3 At4 = A->m_velocity + wAxrAi;
 
 			// Body two terms.
-			glm::vec3 rBi = ci.contactPoint - B->GetPosition();
-			glm::vec3 wBxrBi = glm::cross(B->GetAngularVelocity(), rBi);
-			glm::vec3 Bt1 = B->GetInverseMass() * B->GetForce();
-			glm::vec3 Bt2 = glm::cross(B->GetInverseIntertia() * (B->GetTorque() + glm::cross(B->GetAngularMomentum(), B->GetAngularVelocity())), rBi);
-			glm::vec3 Bt3 = glm::cross(B->GetAngularVelocity(), wBxrBi);
-			glm::vec3 Bt4 = B->GetVelocity() + wBxrBi;
+			glm::vec3 rBi = ci.contactPoint - B->m_position;
+			glm::vec3 wBxrBi = glm::cross(B->m_angularVelocity, rBi);
+			glm::vec3 Bt1 = B->m_invMass * B->m_externalForce;
+			glm::vec3 Bt2 = glm::cross(B->m_invInertia * (B->m_externalTorque + glm::cross(B->m_angularMomentum, B->m_angularVelocity)), rBi);
+			glm::vec3 Bt3 = glm::cross(B->m_angularVelocity, wBxrBi);
+			glm::vec3 Bt4 = B->m_velocity + wBxrBi;
 
 			// Compute derivative of contact normal.
 			glm::vec3 Ndot;
 			if (ci.isVFContact) {
-				Ndot = glm::cross(B->GetAngularVelocity(), ci.contactNormal);
+				Ndot = glm::cross(B->m_angularVelocity, ci.contactNormal);
 			}
 			else {
-				glm::vec3 EdgeOnedot = glm::cross(A->GetAngularVelocity(), ci.edgeOne);
-				glm::vec3 EdgeTwodot = glm::cross(B->GetAngularVelocity(), ci.edgeTwo);
+				glm::vec3 EdgeOnedot = glm::cross(A->m_angularVelocity, ci.edgeOne);
+				glm::vec3 EdgeTwodot = glm::cross(B->m_angularVelocity, ci.edgeTwo);
 				glm::vec3 U = glm::cross(ci.edgeOne, EdgeTwodot) + glm::cross(EdgeOnedot, ci.edgeTwo);
 				Ndot = (U - glm::dot(U, ci.contactNormal)) * glm::normalize(ci.contactNormal);
 			}
@@ -248,18 +247,21 @@ namespace Collisions {
 	{
 		for (int i = 0; i < contacts.size(); i++) {
 			Collisions::Contact ci = contacts[i];
-			Rigidbody::State& A = ci.bodyOne->GetState();
-			Rigidbody::State& B = ci.bodyOne->GetState();
+			Rigidbody* A = ci.bodyOne;
+			Rigidbody* B = ci.bodyTwo;
 
 			// Update momentum.
 			glm::vec3 impulse = f[i] * ci.contactNormal;
-			A.momentum += impulse;
-			B.momentum -= impulse;
-			A.angularMomentum += glm::cross(ci.contactPoint - A.pos, impulse);
-			B.angularMomentum -= glm::cross(ci.contactPoint - B.pos, impulse);
+			A->m_momentum += impulse;
+			B->m_momentum -= impulse;
+			A->m_angularMomentum += glm::cross(ci.contactPoint - A->m_position, impulse);
+			B->m_angularMomentum -= glm::cross(ci.contactPoint - B->m_position, impulse);
 
 			// Update velocity.
-			// Don't need to?
+			A->m_velocity = A->m_invMass * A->m_momentum;
+			B->m_velocity = B->m_invMass * B->m_momentum;
+			A->m_angularVelocity = A->m_invInertia * A->m_angularMomentum;
+			B->m_angularVelocity = B->m_invInertia * B->m_angularMomentum;
 		}
 	}
 
@@ -347,7 +349,7 @@ namespace {
 		}
 
 		// Figure out the vertex that is colliding (just using toCenter doesn't work!)
-		glm::vec3 vertex = two.GetHalfwidth();
+		glm::vec3 vertex = two.m_halfwidth;
 		if (glm::dot(two.GetAxis(0), normal) < 0) vertex.x *= -1.0f;
 		if (glm::dot(two.GetAxis(1), normal) < 0) vertex.y *= -1.0f;
 		if (glm::dot(two.GetAxis(2), normal) < 0) vertex.z *= -1.0f;
@@ -372,9 +374,9 @@ namespace {
 	{
 		// Might be able to optimize this, not sure.
 		return
-			rb.GetHalfwidth().x * glm::abs(glm::dot(glm::fastNormalize(model[0]), axis)) +
-			rb.GetHalfwidth().y * glm::abs(glm::dot(glm::fastNormalize(model[1]), axis)) +
-			rb.GetHalfwidth().z * glm::abs(glm::dot(glm::fastNormalize(model[2]), axis));
+			rb.m_halfwidth.x * glm::abs(glm::dot(glm::fastNormalize(model[0]), axis)) +
+			rb.m_halfwidth.y * glm::abs(glm::dot(glm::fastNormalize(model[1]), axis)) +
+			rb.m_halfwidth.z * glm::abs(glm::dot(glm::fastNormalize(model[2]), axis));
 	}
 
 

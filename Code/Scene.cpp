@@ -116,14 +116,13 @@ void Scene::Update()
 	// Update timings.
 	timePointStartOfLastFrame = timePointStartOfThisFrame;
 	timePointStartOfThisFrame = std::chrono::steady_clock::now();
-	double dt = LastFrameTime();	// Time since start of last frame in seconds.
-	//std::cout << "Time of last frame: " << dt << " seconds." << std::endl;
+	UpdateTimer(lastFramesTime, totalRunTime);	// update total run time and dt.
 
 	CheckKeyboardInput();
 	UpdateCamera();
 	UpdateText();
 	if (!isScenePaused) {
-		UpdatePhysics(dt);
+		UpdatePhysics(lastFramesTime, totalRunTime);
 	}
 
 	
@@ -154,7 +153,7 @@ void Scene::CheckKeyboardInput() {
 	}
 
 	if (keys['A']) {
-		rigidbodies[0].get()->AddForce(glm::vec3(0, -1, 0), glm::vec3(1, -0.5f, -0.25f));
+		//rigidbodies[0].get()->AddForce(glm::vec3(0, -1, 0), glm::vec3(1, -0.5f, -0.25f));
 	}
 
 
@@ -197,10 +196,10 @@ void Scene::CheckKeyboardInput() {
 	}
 }
 
-void Scene::UpdatePhysics(double dt) {
+void Scene::UpdatePhysics(float dt, float t) {
 
 	for (std::shared_ptr<Rigidbody> rb : rigidbodies) {
-		rb->Update(dt);
+		rb->Update(dt, t);
 	}
 
 	// Check collisions.
@@ -231,6 +230,7 @@ void Scene::UpdatePhysics(double dt) {
 		}
 	}
 
+	/*
 	// Collision response.
 	int size = contacts.size();
 	gte::GMatrix<float> A = gte::GMatrix<float>(size, size);
@@ -241,8 +241,8 @@ void Scene::UpdatePhysics(double dt) {
 	// Guarantee no interpenetration.
 	Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
 	//? Minimize function
-	Collisions::Im
-
+	//Collisions::Im
+	*/
 
 }
 
@@ -292,10 +292,12 @@ Scene::~Scene()
 
 }
 
-double Scene::LastFrameTime()
+void Scene::UpdateTimer(float& dt, float& t)
 {
-	return static_cast<double>((timePointStartOfThisFrame - timePointStartOfLastFrame).count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+	dt = static_cast<float>((timePointStartOfThisFrame - timePointStartOfLastFrame).count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+	t += dt;
 }
+
 
 Mesh* HitboxMesh(Mesh* base)
 {

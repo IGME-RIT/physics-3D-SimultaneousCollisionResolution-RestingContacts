@@ -7,77 +7,30 @@
 #include "Mesh.h"
 #include "Entity.h"
 #include <memory>
-#include "Collisions.h"
+//#include "Collisions.h"
 
 
 
 // A class to represent a physics object.
+// Logic mostly from David Eberly's book, "Game Physics"
 class Rigidbody
 {
-public:
-
-	// A struct to represent a force (as a force can be a direction, or position and direction).
-	struct Force {
-		glm::vec3 force = glm::vec3(0);
-		glm::vec3 position = glm::vec3(0);
-		bool hasPosition = false;
-	};
-
-	// A struct that contains all the necessary physics information about the state of the rigidbody.
-	// Idea from the book "Foundations of Physically Based Modeling and Animation", page 201.
-	struct State {
-		glm::vec3 pos;				// x
-		glm::quat orientation;		// q, Quaternion
-		glm::vec3 momentum;			// P
-		glm::vec3 angularMomentum;	// L
-
-		
-		State(glm::vec3 pos, glm::quat orientation, glm::vec3 momentum, glm::vec3 angMomentum) {
-			this->pos = pos;
-			this->orientation = orientation;
-			this->momentum = momentum;
-			this->angularMomentum = angMomentum;
-		}
-		State() : State(glm::vec3(0), glm::quat(), glm::vec3(0), glm::vec3(0)) {}
-		State operator+ (const State& first) const { return State(pos + first.pos, orientation + first.orientation, momentum + first.momentum, angularMomentum + first.angularMomentum); }
-		State operator* (const float& scalar) const { return State(scalar * pos, scalar * orientation, scalar * momentum, scalar * angularMomentum); }
-
-		// Main function of the struct, inverse moment of inertia is in local space.
-		State ComputeRigidDerivative(float mass,
-			glm::mat3 inverseMomentOfIntertia,
-			std::vector<Rigidbody::Force> forces,
-			std::vector<Rigidbody::Force> constantForces);
-	};
-
-private:
-
-	std::vector<std::shared_ptr<Entity>> entities;
-	std::shared_ptr<Entity> entity;	// First entity in the array.
-
-	// Physics related attributes (double precision).
-	// Physics variables: m, x, v, P,  I, r, w, L
-	// The state of the rigidbody.
-	State currentState;
-	float mass;
-	float inverseMass;
-	glm::mat3 momentOfInertia;
-	glm::mat3 inverseInertia;
-	std::vector<Force> forces;	// List of forces currently being applied to the object (cleared every frame). Impulses.
-	std::vector<Force> constantForces; // List of forces that are applied to object every frame (like gravity). Not cleared at the end of the frame.
-
-	float gravity = -1.0f;
-
-	// Flags for this object (can create bitwise flags if enough show up)
-	bool isMovable = true;
-
-	// Mesh related attributes (held in this class as vec3 instead of float arrays).
-	glm::vec3 min;
-	glm::vec3 max;
-	glm::vec3 center;
-	glm::vec3 halfwidth;
-	float radius;	// Calculated from halfwidth.
+protected:
+	// Typedef used for force/torque equations. Contains the state of object/current time.
+	typedef glm::vec3(*Function)
+	(
+		double,		// current time (not dt)
+		glm::vec3,	// position
+		glm::quat,	// orientation
+		glm::vec3,	// momentum
+		glm::vec3,	// angular momentum
+		glm::mat3,	// orientation matrix
+		glm::vec3,	// velocity
+		glm::vec3	// angular velocity
+	);
 
 public:
+
 	// Constructor to initialize one rigidbody for multiple entities (the entities will all move the same).
 	// Used in cases such as having an object and its OBB moving at the same time.
 	Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable = true);
@@ -85,41 +38,69 @@ public:
 	// Create a rigidbody from the given entity (if using cuboid, just pass entity).
 	Rigidbody(std::shared_ptr<Entity> entity, bool isMovable = true);
 
-	// Update the physics.
-	void Update(double dt);
+	// State based functions.
+	void SetState(glm::vec3 position, glm::quat orientation, glm::vec3 momentum, glm::vec3 angularMomentum);
+	void GetState(glm::vec3& position, glm::quat& orientation, glm::vec3& momentum, glm::vec3& angularMomentum) const;
+	void GetPosition(glm::vec3& position) const;	// Used enough to have it's own function.
 
-	// Add a force to the rigidbody.
-	void AddForce(glm::vec3 forceVector);
-	void AddForce(glm::vec3 forceVector, glm::vec3 position);
-	void AddConstantForce(glm::vec3 forceVector);	// I don't think there's any constant point forces?
+	// Set the force/torque functions to use in update.
+	void SetForceFunction(Function force);
+	void SetTorqueFunction(Function torque);
 
-	// Get the axis represented by the given number (0 <= best <= 2).
+	// RK4 diff eq solver.
+	void Update(float t, float dt);
+
+	// Pulling state out of the struct.
+	// State variables.
+	glm::vec3 m_position;			// X
+	glm::quat m_orientation;		// Q 
+	glm::vec3 m_momentum;			// P
+	glm::vec3 m_angularMomentum;	// L
+
+	// Derived state variables.
+	glm::mat3 m_orientationMatrix;	// R
+	glm::vec3 m_velocity;			// V
+	glm::vec3 m_angularVelocity;	// W
+
+	// Force variables.
+	glm::vec3 m_externalForce, m_externalTorque;	// External forces at time of simulation.
+	glm::vec3 m_internalForce, m_internalTorque;	// Resting contact forces. Resets to zero each pass.
+
+	// Const properties of object.
+	float m_mass;
+	glm::mat3 m_inertia;
+	float m_invMass;
+	glm::mat3 m_invInertia;
+
+// Section for physics related variables.
+protected:
+
+	// Get derived state variables from normal state variables.
+	void Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm::vec3& V, glm::vec3& W) const;
+
+	// Force and torque functions.
+	Function m_force;
+	Function m_torque;
+
+	// Flags for this object (can create bitwise flags if enough show up)
+	bool m_isMovable = true;
+
+// Section for underlying entities and mesh.
+public:
 	glm::vec3 GetAxis(unsigned best) const;
-
-	// Getters and setters.
 	const glm::mat4& GetModelMatrix() const;
-	std::shared_ptr<Entity> GetEntity() const;
-	unsigned GetEntityCount() const;
-	const glm::vec3& GetMin() const;
-	const glm::vec3& GetMax() const;
-	const glm::vec3& GetCenter() const;
-	const glm::vec3& GetHalfwidth() const;
-	const float& GetRadius() const;
-	const float& GetInverseMass() const;
-	const glm::mat3& GetInverseIntertia() const;
-	const glm::vec3& GetVelocity() const;
-	const glm::vec3& GetAngularVelocity() const;
-	const glm::vec3& GetPosition() const;
-	const glm::vec3 GetForce() const;	// Get the total forces acting on this body.
-	const glm::vec3 GetTorque() const;
-	const glm::vec3& GetAngularMomentum() const;
 
-	State& GetState();
+	// Mesh related attributes.
+	glm::vec3 m_min;
+	glm::vec3 m_max;
+	glm::vec3 m_center;
+	glm::vec3 m_halfwidth;
+	float m_radius;	// Calculated from halfwidth.
 
+protected:
 
-private:
-	// Other variables (precreate for optimization purposes)
-	State newState;
-	State computedState;
+	std::shared_ptr<Entity> m_entity;					// Primary entity to base variables on.
+	std::vector<std::shared_ptr<Entity>> m_entities;	// List of all entities to adjust the same.
+
 };
 
