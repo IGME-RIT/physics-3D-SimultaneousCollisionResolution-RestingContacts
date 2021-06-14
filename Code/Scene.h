@@ -42,6 +42,9 @@ private:
 	std::vector<std::shared_ptr<Cuboid>> cuboids;
 	std::vector<std::shared_ptr<Rigidbody>> rigidbodies;
 
+	// Used and populated in the UpdatePhysics function. Stores all of the contact points.
+	std::vector<Collisions::Contact> contacts;
+
 	// Timing variables
 	bool isScenePaused = false;
 	std::chrono::steady_clock::time_point timePointSceneStart;

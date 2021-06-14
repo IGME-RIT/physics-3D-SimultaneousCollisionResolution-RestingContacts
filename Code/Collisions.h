@@ -9,15 +9,27 @@
 // Written by Chris Hambacher, 2021.
 
 #include "Rigidbody.h"
+#include "GTE/Mathematics/GMatrix.h"	// Matrix of any size (as GLM only allows for matrix of size 4 or smaller).
+#include <vector>
+
+#define GTE_USE_ROW_MAJOR 1	// Used to tell GMatrix to use row major matrices.
+
 
 namespace Collisions {
 	// Class to store a contact point. This gets used by ContactData which stores contact points.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/contacts.h#L59
+	// This version has been modified to account for storing Rigidbodies and edges. If it's a VF contact, the two edges are invalid.
+	// If it's an edge edge contact, all fields are valid.
 	class Contact {
 	public:
+		Rigidbody* bodyOne;
+		Rigidbody* bodyTwo;
 		glm::vec3 contactPoint;
 		glm::vec3 contactNormal;
 		float penetrationDepth;
+		glm::vec3 edgeOne = glm::vec3(0);
+		glm::vec3 edgeTwo = glm::vec3(0);
+		bool isVFContact = false;			// Is it a vertex-face contact (true) or edge edge contact (false).
 	};
 
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/collide_fine.h#L183
@@ -52,6 +64,7 @@ namespace Collisions {
 		}
 	};
 
+#pragma region Collision Detection Functions
 	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
 	bool BoxBox (
@@ -60,10 +73,45 @@ namespace Collisions {
 		Collisions::CollisionData* data
 	);
 
+	// We don't return a collision data, as this is just a preliminary check.
+	// Call this before BoxBox.
+	bool BoundingSphere(
+		const Rigidbody& one,
+		const Rigidbody& two
+	);
+
+#pragma endregion Collision Detection Functions
+
+// Collision resolution ideas taken from the book "Game Physics", by David Eberly.
+#pragma region Collision Resolution Functions
+	// Function that takes in a list of ALL collisions in the scene, and generates an LCP matrix based on them.
+	// Matrix is a square matrix with num of rows/cols equal to number of collisions, and is upper triangular.
+	void ComputeLCPMatrix(std::vector<Collisions::Contact> contacts, gte::GMatrix<float>& lcpMatrix);
+	
+	// Function that compues the preimpulse velocities.
+	// Function uses GVector for output instead of normal std::vector, as we might have to use operations between GMatrix and GVector.
+	void ComputePreImpulseVelocity(std::vector<Collisions::Contact> contacts, gte::GVector<float>& ddot);
+
+	// Function that computes the vector b for resting contact points.
+	void ComputeRestingContactVector(std::vector<Collisions::Contact> contacts, gte::GVector<float>& b);
+
+	// Function that replaces preimpulse velocities with postimpulse velocities.
+	void DoImpulse(std::vector<Collisions::Contact> contacts, gte::GVector<float>& f);
+
+
+#pragma endregion Collision Resolution Functions
 }
 
 // Private namespace for helper functions.
 namespace {
+#pragma region Collision Resolution Helper Functions
+
+
+
+#pragma endregion Collision Resolution Helper Functions
+
+
+#pragma region Collision Detection Helper Functions
 	inline glm::vec3 contactPoint(
 		const glm::vec3& pOne,
 		const glm::vec3& dOne,
@@ -114,4 +162,5 @@ namespace {
 		float& smallestPenetration,
 		unsigned& smallestIndex
 	);
+#pragma endregion Collision Detection Helper Functions
 }

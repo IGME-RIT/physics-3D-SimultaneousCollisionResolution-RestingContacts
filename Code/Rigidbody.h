@@ -7,7 +7,7 @@
 #include "Mesh.h"
 #include "Entity.h"
 #include <memory>
-
+#include "Collisions.h"
 
 
 
@@ -59,15 +59,11 @@ private:
 	// The state of the rigidbody.
 	State currentState;
 	float mass;
+	float inverseMass;
 	glm::mat3 momentOfInertia;
-	glm::mat3 inverseMomentOfInertia;
+	glm::mat3 inverseInertia;
 	std::vector<Force> forces;	// List of forces currently being applied to the object (cleared every frame). Impulses.
 	std::vector<Force> constantForces; // List of forces that are applied to object every frame (like gravity). Not cleared at the end of the frame.
-
-	//glm::dvec3 a = glm::dvec3(0);	// Acceleration
-	//glm::dvec3 v = glm::dvec3(0);	// Velocity
-	//glm::dvec3 p = glm::dvec3(0);	// Position
-	//glm::dvec3 w = glm::dvec3(0);	// Angular velocity (represented by w because it looks like lowercase omega).
 
 	float gravity = -1.0f;
 
@@ -79,6 +75,7 @@ private:
 	glm::vec3 max;
 	glm::vec3 center;
 	glm::vec3 halfwidth;
+	float radius;	// Calculated from halfwidth.
 
 public:
 	// Constructor to initialize one rigidbody for multiple entities (the entities will all move the same).
@@ -107,6 +104,18 @@ public:
 	const glm::vec3& GetMax() const;
 	const glm::vec3& GetCenter() const;
 	const glm::vec3& GetHalfwidth() const;
+	const float& GetRadius() const;
+	const float& GetInverseMass() const;
+	const glm::mat3& GetInverseIntertia() const;
+	const glm::vec3& GetVelocity() const;
+	const glm::vec3& GetAngularVelocity() const;
+	const glm::vec3& GetPosition() const;
+	const glm::vec3 GetForce() const;	// Get the total forces acting on this body.
+	const glm::vec3 GetTorque() const;
+	const glm::vec3& GetAngularMomentum() const;
+
+	State& GetState();
+
 
 private:
 	// Other variables (precreate for optimization purposes)

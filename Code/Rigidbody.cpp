@@ -22,6 +22,7 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	this->max = glm::make_vec3(mesh.max);
 	this->center = glm::make_vec3(mesh.center);
 	this->halfwidth = glm::make_vec3(mesh.halfwidth);
+	this->radius = glm::length(halfwidth);
 
 	// Assume that we dealing with cuboids.
 	this->mass = 1;
@@ -30,7 +31,8 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 		0, mass * (glm::pow(halfwidth.x * 2.f, 2) + glm::pow(halfwidth.z * 2.f, 2)) / 12.f, 0,
 		0, 0, mass * (glm::pow(halfwidth.x * 2.f, 2) + glm::pow(halfwidth.y * 2.f, 2)) / 12.f
 	);
-	this->inverseMomentOfInertia = glm::inverse(momentOfInertia);	// This can be optimized.
+	this->inverseMass = 1 / mass;
+	this->inverseInertia = glm::inverse(momentOfInertia);	// This can be optimized.
 
 	// Assign the state.
 	//this->currentState = Rigidbody::State(this->entity->pos, glm::quat(), glm::vec3(0), glm::vec3(0));
@@ -50,7 +52,7 @@ void Rigidbody::Update(double h)
 	if (!isMovable) return;
 
 	// Compute the next state.
-	computedState = currentState.ComputeRigidDerivative(mass, inverseMomentOfInertia, forces, constantForces);
+	computedState = currentState.ComputeRigidDerivative(mass, inverseInertia, forces, constantForces);
 	newState = currentState + computedState * h;
 	newState.orientation = glm::normalize(newState.orientation);
 
@@ -131,8 +133,7 @@ Rigidbody::State Rigidbody::State::ComputeRigidDerivative(
 
 #pragma region Getters and Setters
 glm::vec3 Rigidbody::GetAxis(unsigned best) const {
-	// We take modulo 3 to account for second set of axis (so 3 should map to 0, 4 should map to 1, etc.)
-	return static_cast<glm::vec3>(entity->GetModelMatrix()[best % 3]);
+	return static_cast<glm::vec3>(entity->GetModelMatrix()[best]);
 }
 const glm::mat4& Rigidbody::GetModelMatrix() const { return entity->GetModelMatrix(); }
 std::shared_ptr<Entity> Rigidbody::GetEntity() const { return entity; }
@@ -142,5 +143,36 @@ const glm::vec3& Rigidbody::GetMin() const { return min; }
 const glm::vec3& Rigidbody::GetMax() const { return max; }
 const glm::vec3& Rigidbody::GetCenter() const { return center; }
 const glm::vec3& Rigidbody::GetHalfwidth() const { return halfwidth; }
+const float& Rigidbody::GetRadius() const { return radius; }
+const float& Rigidbody::GetInverseMass() const { return inverseMass; }
+const glm::mat3& Rigidbody::GetInverseIntertia() const { return inverseInertia; }
+const glm::vec3& Rigidbody::GetVelocity() const { return currentState.momentum * inverseMass; }
+const glm::vec3& Rigidbody::GetAngularVelocity() const { return inverseInertia * currentState.angularMomentum; }
+const glm::vec3& Rigidbody::GetPosition() const { return entity->GetWorldPosition(); }
+const glm::vec3& Rigidbody::GetAngularMomentum() const { return currentState.angularMomentum; }
+Rigidbody::State& Rigidbody::GetState()
+{
+	return currentState;
+}
+const glm::vec3 Rigidbody::GetForce() const { 
+	glm::vec3 totalForce = glm::vec3(0);
+	for (auto force : forces)
+		totalForce += force;
+	for (auto force : constantForces)
+		totalForce += force;
+	return totalForce;
+}
+const glm::vec3 Rigidbody::GetTorque() const {
+	glm::vec3 totalTorque = glm::vec3(0);
+	for (Force force : forces) {
+		if (force.hasPosition == true) {
+			glm::vec3 r = force.position - currentState.pos;
+			totalTorque += glm::cross(r, force.force);
+		}
+	}
+	return totalTorque;
+}
+
+
 #pragma endregion Getters and Setters
 

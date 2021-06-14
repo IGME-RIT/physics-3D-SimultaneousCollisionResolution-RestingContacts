@@ -4,12 +4,10 @@
 #include "glm/gtx/normalize_dot.hpp" // For fastNormalize.
 #include "GTE/Mathematics/LCPSolver.h"	// LCP solver :)
 
-// THINGS TO DO
-// Implement collision data class.
-
-
 
 namespace Collisions {
+
+#pragma region Collision Detection Functions
 
 	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
@@ -97,10 +95,22 @@ namespace Collisions {
 				else if (glm::dot(two.GetAxis(i), axis) < 0) ptOnTwoEdge[i] = -ptOnTwoEdge[i];
 			}
 
+			// Get both of the edges as normalized vectors in world space (to pass into the contact).
+			glm::vec3 oneEdge = ptOnOneEdge;
+			oneEdge[oneAxisIndex] = one.GetHalfwidth()[oneAxisIndex];
+			oneEdge = static_cast<glm::vec3>(one.GetModelMatrix() * glm::vec4(oneEdge, 0));	// Zero because we care about direction, not location.
+			oneEdge = glm::normalize(oneEdge);
+
+			glm::vec3 twoEdge = ptOnTwoEdge;
+			twoEdge[oneAxisIndex] = two.GetHalfwidth()[twoAxisIndex];
+			twoEdge = static_cast<glm::vec3>(two.GetModelMatrix() * glm::vec4(twoEdge, 0));
+			twoEdge = glm::normalize(twoEdge);
+
 			// Move them into world coordinates (they are already oriented
 			// correctly, since they have been derived from the axes).
-			ptOnOneEdge = one.GetEntity()->pos + ptOnOneEdge;
-			ptOnTwoEdge = two.GetEntity()->pos + ptOnTwoEdge;
+			// I think they aren't actually oriented correctly, as halfwidth isn't oriented. Multiply by model matrix instead.
+			ptOnOneEdge = static_cast<glm::vec3>(one.GetModelMatrix() * glm::vec4(ptOnOneEdge, 1));
+			ptOnTwoEdge = static_cast<glm::vec3>(two.GetModelMatrix() * glm::vec4(ptOnTwoEdge, 1));
 
 			// So we have a point and a direction for the colliding edges.
 			// We need to find out point of closest approach of the two
@@ -114,16 +124,147 @@ namespace Collisions {
 			// We can fill the contact.
 			Contact* contact = data->contacts;
 
-
 			contact->penetrationDepth = pen;
 			contact->contactNormal = axis;
 			contact->contactPoint = vertex;
+
+			contact->edgeOne = oneEdge;
+			contact->edgeTwo = twoEdge;
+			contact->isVFContact = false;
+
 			data->AddContacts(1);
 			return 1;
 		}
 
 		return 0;
 	}
+
+	bool BoundingSphere(const Rigidbody& one, const Rigidbody& two)
+	{
+		glm::vec3 oneCenter = one.GetEntity()->GetWorldPosition();
+		glm::vec3 twoCenter = two.GetEntity()->GetWorldPosition();
+
+		if (glm::length2(twoCenter - oneCenter) > pow(one.GetRadius() + two.GetRadius(), 2))
+			return false;
+		return true;
+	}
+
+#pragma endregion Collision Detection Functions
+
+
+
+#pragma region Resting Contacts Collision Resolution Functions
+	void ComputeLCPMatrix(std::vector<Collisions::Contact> contacts, gte::GMatrix<float>& A)
+	{
+		for (int i = 0; i < contacts.size(); i++) {
+			Contact ci = contacts[i];
+			glm::vec3 rANi = glm::cross(ci.contactPoint - ci.bodyOne->GetAxis(0), ci.contactNormal);
+			glm::vec3 rBNi = glm::cross(ci.contactPoint - ci.bodyTwo->GetAxis(0), ci.contactNormal);
+
+			for (int j = 0; j < contacts.size(); j++) {
+				Contact cj = contacts[j];
+				glm::vec3 rANj = glm::cross(cj.contactPoint - cj.bodyOne->GetAxis(0), cj.contactNormal);
+				glm::vec3 rBNj = glm::cross(cj.contactPoint - cj.bodyTwo->GetAxis(0), cj.contactNormal);
+
+				A(i, j) = 0;
+
+				if (ci.bodyOne == cj.bodyOne) {
+					// personal note: massinv is 1/mass, jinv is inverse inertia tensor.
+					A(i, j) += ci.bodyOne->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) += glm::dot(rANi, ci.bodyOne->GetInverseIntertia() * rANj);
+				}
+				else if (ci.bodyOne == cj.bodyTwo) {
+					A(i, j) -= ci.bodyOne->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) -= glm::dot(rANi, ci.bodyOne->GetInverseIntertia() * rANj);
+				}
+
+				if (ci.bodyTwo == cj.bodyOne) {
+					A(i, j) += ci.bodyTwo->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) += glm::dot(rBNi, ci.bodyTwo->GetInverseIntertia() * rBNj);
+				}
+				else if (ci.bodyTwo == cj.bodyTwo) {
+					A(i, j) -= ci.bodyTwo->GetInverseMass() * glm::dot(ci.contactNormal, cj.contactNormal);
+					A(i, j) -= glm::dot(rBNi, ci.bodyTwo->GetInverseIntertia() * rBNj);
+				}
+			}
+		}
+
+
+	}
+
+	void ComputePreImpulseVelocity(std::vector<Collisions::Contact> contacts, gte::GVector<float>& ddot)
+	{
+		for (int i = 0; i < contacts.size(); i++) {
+			Contact ci = contacts[i];
+			
+			glm::vec3 velA = ci.bodyOne->GetVelocity() + glm::cross(ci.bodyOne->GetAngularVelocity(), ci.contactPoint - ci.bodyOne->GetPosition());
+			glm::vec3 velB = ci.bodyTwo->GetVelocity() + glm::cross(ci.bodyTwo->GetAngularVelocity(), ci.contactPoint - ci.bodyTwo->GetPosition());
+			ddot[i] = glm::dot(ci.contactNormal, velA - velB);
+		}
+
+	}
+
+	void ComputeRestingContactVector(std::vector<Collisions::Contact> contacts, gte::GVector<float>& b)
+	{
+		for (int i = 0; i < contacts.size(); i++) {
+			Contact ci = contacts[i];
+			Rigidbody* A = ci.bodyOne;
+			Rigidbody* B = ci.bodyTwo;
+
+			// Body one terms.
+			glm::vec3 rAi = ci.contactPoint - A->GetPosition();
+			glm::vec3 wAxrAi = glm::cross(A->GetAngularVelocity(), rAi);
+			glm::vec3 At1 = A->GetInverseMass() * A->GetForce();
+			glm::vec3 At2 = glm::cross(A->GetInverseIntertia() * (A->GetTorque() + glm::cross(A->GetAngularMomentum(), A->GetAngularVelocity())), rAi);
+			glm::vec3 At3 = glm::cross(A->GetAngularVelocity(), wAxrAi);
+			glm::vec3 At4 = A->GetVelocity() + wAxrAi;
+
+			// Body two terms.
+			glm::vec3 rBi = ci.contactPoint - B->GetPosition();
+			glm::vec3 wBxrBi = glm::cross(B->GetAngularVelocity(), rBi);
+			glm::vec3 Bt1 = B->GetInverseMass() * B->GetForce();
+			glm::vec3 Bt2 = glm::cross(B->GetInverseIntertia() * (B->GetTorque() + glm::cross(B->GetAngularMomentum(), B->GetAngularVelocity())), rBi);
+			glm::vec3 Bt3 = glm::cross(B->GetAngularVelocity(), wBxrBi);
+			glm::vec3 Bt4 = B->GetVelocity() + wBxrBi;
+
+			// Compute derivative of contact normal.
+			glm::vec3 Ndot;
+			if (ci.isVFContact) {
+				Ndot = glm::cross(B->GetAngularVelocity(), ci.contactNormal);
+			}
+			else {
+				glm::vec3 EdgeOnedot = glm::cross(A->GetAngularVelocity(), ci.edgeOne);
+				glm::vec3 EdgeTwodot = glm::cross(B->GetAngularVelocity(), ci.edgeTwo);
+				glm::vec3 U = glm::cross(ci.edgeOne, EdgeTwodot) + glm::cross(EdgeOnedot, ci.edgeTwo);
+				Ndot = (U - glm::dot(U, ci.contactNormal)) * glm::normalize(ci.contactNormal);
+			}
+
+			// Compute b vector element.
+			b[i] = glm::dot(ci.contactNormal, At1 + At2 + At3 - Bt1 - Bt2 - Bt3) + (2.f * glm::dot(Ndot, At4 - Bt4));
+		}
+	}
+
+	void DoImpulse(std::vector<Collisions::Contact> contacts, gte::GVector<float>& f)
+	{
+		for (int i = 0; i < contacts.size(); i++) {
+			Collisions::Contact ci = contacts[i];
+			Rigidbody::State& A = ci.bodyOne->GetState();
+			Rigidbody::State& B = ci.bodyOne->GetState();
+
+			// Update momentum.
+			glm::vec3 impulse = f[i] * ci.contactNormal;
+			A.momentum += impulse;
+			B.momentum -= impulse;
+			A.angularMomentum += glm::cross(ci.contactPoint - A.pos, impulse);
+			B.angularMomentum -= glm::cross(ci.contactPoint - B.pos, impulse);
+
+			// Update velocity.
+			// Don't need to?
+		}
+	}
+
+#pragma endregion Resting Contacts Collision Resolution Functions
+
 }
 
 // Private namespace for helper functions.
@@ -218,6 +359,7 @@ namespace {
 		glm::mat4 twoModelMatrix = two.GetModelMatrix();	// Make copy of the matrix.
 		contact->contactPoint = static_cast<glm::vec3>(twoModelMatrix * glm::vec4(vertex, 1));
 
+		contact->isVFContact = true;	// It's a vertex-face contact.
 	}
 
 	// Projects the largest halfwidth onto the given axis.

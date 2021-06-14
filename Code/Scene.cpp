@@ -154,10 +154,7 @@ void Scene::CheckKeyboardInput() {
 	}
 
 	if (keys['A']) {
-		rigidbodies[0].get()->AddForce(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0));
-	}
-	if (keys['D']) {
-		rigidbodies[0].get()->AddForce(glm::vec3(0, -1, 0), glm::vec3(1, 0, 0));
+		rigidbodies[0].get()->AddForce(glm::vec3(0, -1, 0), glm::vec3(1, -0.5f, -0.25f));
 	}
 
 
@@ -207,14 +204,46 @@ void Scene::UpdatePhysics(double dt) {
 	}
 
 	// Check collisions.
-	std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(8);
-	Collisions::BoxBox(*rigidbodies[1].get(), *rigidbodies[0].get(), data.get());
-	if (data->numOfContacts > 0) {
-		cuboids[0]->wireEntity->color = glm::vec3(1, 0, 0); 
+	for (int i = 0; i < rigidbodies.size(); i++) {
+		for (int j = i + 1; j < rigidbodies.size(); j++) {
+			// If they pass the broad phase collision test, do SAT.
+			if (Collisions::BoundingSphere(*rigidbodies[i].get(), *rigidbodies[j].get())) {
+
+				// Create collision data var, check using SAT.
+				std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(8);
+				Collisions::BoxBox(*rigidbodies[i].get(), *rigidbodies[j].get(), data.get());
+
+				// If there's a collision, change the colors of the rigidbody outlines.
+				if (data->numOfContacts > 0) {
+					cuboids[i]->wireEntity->color = glm::vec3(1, 0, 0);
+					cuboids[j]->wireEntity->color = glm::vec3(1, 0, 0);
+				}
+				else {
+					cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
+					cuboids[j]->wireEntity->color = glm::vec3(0, 1, 0);
+				}
+
+				// Add collision data to array.
+				for (int i = 0; i < data->numOfContacts; i++) {
+					contacts.push_back(data->contacts[i]);
+				}
+			}
+		}
 	}
-	else {
-		cuboids[0]->wireEntity->color = glm::vec3(0, 1, 0);
-	}
+
+	// Collision response.
+	int size = contacts.size();
+	gte::GMatrix<float> A = gte::GMatrix<float>(size, size);
+	gte::GVector<float> preRelVel, postRelVel, impulseMag = gte::GVector<float>(size);
+	gte::GVector<float> restingB, relAcc, restingMag = gte::GVector<float>(size);
+	// Compute LCP Matrix.
+	Collisions::ComputeLCPMatrix(contacts, A);
+	// Guarantee no interpenetration.
+	Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
+	//? Minimize function
+	Collisions::Im
+
+
 }
 
 void Scene::UpdateCamera() {
