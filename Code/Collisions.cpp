@@ -3,7 +3,7 @@
 #include "glm/gtx/norm.hpp"	// Some "experimental" math functions (aka I'm too lazy to code square length myself, glm::length2)
 #include "glm/gtx/normalize_dot.hpp" // For fastNormalize.
 #include "GTE/Mathematics/LCPSolver.h"	// LCP solver :)
-
+#include <iostream>
 
 namespace Collisions {
 
@@ -12,8 +12,8 @@ namespace Collisions {
 	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
 	bool Collisions::BoxBox (
-		const Rigidbody& one,
-		const Rigidbody& two,
+		Rigidbody& one,
+		Rigidbody& two,
 		Collisions::CollisionData* data
 	)
 	{
@@ -56,12 +56,16 @@ namespace Collisions {
 		if (best < 3) {
 			// Vertex face collision, face on box one, vertex on box two.
 			fillPointFaceBoxBox(one, two, toCenter, data, best, pen);
+			data->contacts->bodyOne = &one;
+			data->contacts->bodyTwo = &two;
 			data->AddContacts(1);
 			return 1;
 		}
 		else if (best < 6) {
 			// Vertex face collision, face on box two, vertex on box one.
 			fillPointFaceBoxBox(two, one, toCenter * -1.0f, data, best - 3, pen);
+			data->contacts->bodyOne = &one;
+			data->contacts->bodyTwo = &two;
 			data->AddContacts(1);
 			return 1;
 		}
@@ -133,6 +137,9 @@ namespace Collisions {
 			contact->edgeTwo = twoEdge;
 			contact->isVFContact = false;
 
+			contact->bodyOne = &one;
+			contact->bodyTwo = &two;
+
 			data->AddContacts(1);
 			return 1;
 		}
@@ -153,7 +160,7 @@ namespace Collisions {
 
 
 #pragma region Resting Contacts Collision Resolution Functions
-	void ComputeLCPMatrix(std::vector<Collisions::Contact> contacts, gte::GMatrix<float>& A)
+	void ComputeLCPMatrix(const std::vector<Collisions::Contact>& contacts, std::vector<float>& A)
 	{
 		for (int i = 0; i < contacts.size(); i++) {
 			Contact ci = contacts[i];
@@ -165,25 +172,26 @@ namespace Collisions {
 				glm::vec3 rANj = glm::cross(cj.contactPoint - cj.bodyOne->GetAxis(0), cj.contactNormal);
 				glm::vec3 rBNj = glm::cross(cj.contactPoint - cj.bodyTwo->GetAxis(0), cj.contactNormal);
 
-				A(i, j) = 0;
+				float& A_ij = A[i * contacts.size() + j];
+				A_ij = 0;
 
 				if (ci.bodyOne == cj.bodyOne) {
 					// personal note: massinv is 1/mass, jinv is inverse inertia tensor.
-					A(i, j) += ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) += glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
+					A_ij += ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A_ij += glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
 				}
 				else if (ci.bodyOne == cj.bodyTwo) {
-					A(i, j) -= ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) -= glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
+					A_ij -= ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A_ij -= glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
 				}
 
 				if (ci.bodyTwo == cj.bodyOne) {
-					A(i, j) += ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) += glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
+					A_ij += ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A_ij += glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
 				}
 				else if (ci.bodyTwo == cj.bodyTwo) {
-					A(i, j) -= ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
-					A(i, j) -= glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
+					A_ij -= ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A_ij -= glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
 				}
 			}
 		}
@@ -191,7 +199,7 @@ namespace Collisions {
 
 	}
 
-	void ComputePreImpulseVelocity(std::vector<Collisions::Contact> contacts, gte::GVector<float>& ddot)
+	void ComputePreImpulseVelocity(const std::vector<Collisions::Contact>& contacts, std::vector<float>& ddot)
 	{
 		for (int i = 0; i < contacts.size(); i++) {
 			Contact ci = contacts[i];
@@ -203,7 +211,7 @@ namespace Collisions {
 
 	}
 
-	void ComputeRestingContactVector(std::vector<Collisions::Contact> contacts, gte::GVector<float>& b)
+	void ComputeRestingContactVector(const std::vector<Collisions::Contact>& contacts, std::vector<float>& b)
 	{
 		for (int i = 0; i < contacts.size(); i++) {
 			Contact ci = contacts[i];
@@ -243,7 +251,7 @@ namespace Collisions {
 		}
 	}
 
-	void DoImpulse(std::vector<Collisions::Contact> contacts, gte::GVector<float>& f)
+	void DoImpulse(const std::vector<Collisions::Contact>& contacts, std::vector<float>& f)
 	{
 		for (int i = 0; i < contacts.size(); i++) {
 			Collisions::Contact ci = contacts[i];
@@ -264,6 +272,110 @@ namespace Collisions {
 			B->m_angularVelocity = B->m_invInertia * B->m_angularMomentum;
 		}
 	}
+
+	void DoMotion(double t, double dt, const std::vector<Collisions::Contact>& contacts, std::vector<float> g) {
+		for (int i = 0; i < contacts.size(); i++) {
+			Contact ci = contacts[i];
+			glm::vec3 resting = g[i] * ci.contactNormal;
+			ci.bodyOne->AppendInternalForce(resting);
+			ci.bodyOne->AppendInternalTorque(glm::cross(ci.contactPoint - ci.bodyOne->m_position, resting));
+			ci.bodyTwo->AppendInternalForce(-resting);
+			ci.bodyTwo->AppendInternalTorque(-glm::cross(ci.contactPoint - ci.bodyTwo->m_position, resting));
+		}
+
+		// Pulling this outside of the function.
+		//for (int i = 0; i < rigidbodies.size(); i++) {
+		//	rigidbodies[i].Update(t, dt);
+		//}
+	}
+
+	void Minimize(const std::vector<float>& Avector, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f)
+	{
+		// Our general matrix size. We will be using 3 times this for most matrices (due to two conditions).
+		int size = dneg.size();
+		gte::GMatrix<float> A(size, size);
+		gte::GMatrix<float> M(size * 3, size * 3);
+		gte::GVector<float> q, b, c; 
+		q = gte::GVector<float>(size * 3);
+		b = c = gte::GVector<float>(size);
+
+		// Generate the b and c vectors.
+		for (int i = 0; i < size; i++) {
+			if (dneg[i] >= 0.f)
+				b[i] = 0.f;
+			else
+				b[i] = 2.f * dneg[i];
+
+			c[i] = abs(dneg[i]);
+		}
+
+		// Create a matrix for A.
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				A(i, j) = Avector[(i * size) + j];
+			}
+		}
+
+		// Fill the M matrix:
+		// { 2s  0 -A
+		//    0  0  A
+		//    A -A  0 }
+		gte::GMatrix<float> S = gte::MultiplyATB(A, A);
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				M(i, j) = 2.f * S(i, j);
+				M(i + size, j) = -1.f * A(i, j);
+				M(i + 2 * size, j) = A(i, j);
+				M(i, j + size) = A(i, j);
+				M(i, j + 2 * size) = -1.f * A(i, j);
+			}
+		}
+
+		// Fill the q vector:
+		// { 2b^TA
+		//       b
+		//     c-b }
+		gte::GVector<float> double_bTA = 2.f * b * A;
+		for (int i = 0; i < size; i++) {
+			q[i] = double_bTA[i];
+			q[i + size] = b[i];
+			q[i + size * 2] = c[i] - b[i];
+		}
+
+		// Move data from GVectors and GMatrices into std::vectors.
+		std::vector<float> MVector, QVector, ZVector, WVector;
+		MVector = std::vector<float>(9 * size * size);
+		QVector = ZVector = WVector = std::vector<float>(3 * size);
+		std::copy_n(&M[0], 9 * size * size, MVector.begin());
+		std::copy_n(&q[0], 3 * size, QVector.begin());
+		
+		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(3 * size);
+		std::shared_ptr<gte::LCPSolver<float>::Result> result = std::make_shared<gte::LCPSolver<float>::Result>();
+		if (lcpSolver.Solve(QVector, MVector, WVector, ZVector, result.get())) {
+			// Get the output of f, calculate dpos.
+			std::copy_n(ZVector.begin(), size, f.begin());
+			// dpos = Af + b
+			//for (int i = 0; i < size; i++) {
+			//	dpos[i] = 0;
+			//	for (int j = 0; j < size; j++) {
+			//		dpos[i] += (A(i, j) * f[j]) + b[j];
+			//	}
+			//}
+
+			if (*result == gte::LCPSolver<float>::Result::HAS_TRIVIAL_SOLUTION) {
+				std::cout << "Trivial Result" << std::endl;
+			}
+			else {
+				std::cout << "Proper result." << std::endl;
+			}
+		}
+		else {
+			// There was no solution, return two zero vectors.
+			std::fill(f.begin(), f.end(), 0);
+			std::fill(dpos.begin(), dpos.end(), 0);
+		}
+	}
+
 
 #pragma endregion Resting Contacts Collision Resolution Functions
 

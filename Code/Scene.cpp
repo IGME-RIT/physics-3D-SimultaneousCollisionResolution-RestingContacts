@@ -51,9 +51,13 @@ Scene::Scene()
 
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(1, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
+	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
+	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
 
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(2, -2, 0.5f), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), false));
+	rigidbodies[1]->SetForceFunction(ForceFunctions::NoForce);
+	rigidbodies[1]->SetTorqueFunction(ForceFunctions::NoTorque);
 
 	// Get a time for when the scene starts.
 	timePointSceneStart = std::chrono::steady_clock::now();
@@ -198,13 +202,13 @@ void Scene::CheckKeyboardInput() {
 
 void Scene::UpdatePhysics(float dt, float t) {
 
-	for (std::shared_ptr<Rigidbody> rb : rigidbodies) {
-		rb->Update(dt, t);
-	}
-
 	// Check collisions.
 	for (int i = 0; i < rigidbodies.size(); i++) {
-		for (int j = i + 1; j < rigidbodies.size(); j++) {
+
+		cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
+
+		for (int j = i + 1; j < rigidbodies.size(); j++) {			
+
 			// If they pass the broad phase collision test, do SAT.
 			if (Collisions::BoundingSphere(*rigidbodies[i].get(), *rigidbodies[j].get())) {
 
@@ -217,33 +221,46 @@ void Scene::UpdatePhysics(float dt, float t) {
 					cuboids[i]->wireEntity->color = glm::vec3(1, 0, 0);
 					cuboids[j]->wireEntity->color = glm::vec3(1, 0, 0);
 				}
-				else {
-					cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
-					cuboids[j]->wireEntity->color = glm::vec3(0, 1, 0);
-				}
 
 				// Add collision data to array.
 				for (int i = 0; i < data->numOfContacts; i++) {
-					contacts.push_back(data->contacts[i]);
+					contacts.push_back(data->contactArray[i]);
 				}
 			}
 		}
 	}
 
-	/*
 	// Collision response.
 	int size = contacts.size();
-	gte::GMatrix<float> A = gte::GMatrix<float>(size, size);
-	gte::GVector<float> preRelVel, postRelVel, impulseMag = gte::GVector<float>(size);
-	gte::GVector<float> restingB, relAcc, restingMag = gte::GVector<float>(size);
-	// Compute LCP Matrix.
-	Collisions::ComputeLCPMatrix(contacts, A);
-	// Guarantee no interpenetration.
-	Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
-	//? Minimize function
-	//Collisions::Im
-	*/
+	if (size > 0) {
+		std::vector<float> A = std::vector<float>(size * size);	// This is a 2D matrix in the form of a vector.
+		std::vector<float> preRelVel, postRelVel, impulseMag; 
+		std::vector<float> restingB, relAcc, restingMag; 
+		preRelVel = postRelVel = impulseMag = restingB = relAcc = restingMag = std::vector<float>(size);
+		//gte::GMatrix<float> A = gte::GMatrix<float>(size, size);
+		//gte::GVector<float> preRelVel, postRelVel, impulseMag = gte::GVector<float>(size);
+		//gte::GVector<float> restingB, relAcc, restingMag = gte::GVector<float>(size);
 
+		// Compute LCP Matrix.
+		Collisions::ComputeLCPMatrix(contacts, A);
+
+		// Guarantee no interpenetration by postRelVel >= 0.
+		Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
+		Collisions::Minimize(A, preRelVel, postRelVel, impulseMag);
+		Collisions::DoImpulse(contacts, impulseMag);
+
+		// Guarantee no interpenetration by relAcc >= 0.
+		Collisions::ComputeRestingContactVector(contacts, restingB);
+		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(size);
+		lcpSolver.Solve(A, restingB, relAcc, restingMag);
+		Collisions::DoMotion(t, dt, contacts, restingMag);
+	}
+	contacts.clear();
+
+	// Update rigidbodies.
+	for (std::shared_ptr<Rigidbody> rb : rigidbodies) {
+		rb->Update(dt, t);
+	}
 }
 
 void Scene::UpdateCamera() {

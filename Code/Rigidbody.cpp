@@ -34,7 +34,13 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	m_invMass = 1 / m_mass;
 	m_invInertia = glm::inverse(m_inertia);	
 
+	// Set default position to entity position.
+	m_position = m_entity->GetWorldPosition();
+
 }
+
+void Rigidbody::AppendInternalForce(glm::vec3 intForce) { m_internalForce += intForce; }
+void Rigidbody::AppendInternalTorque(glm::vec3 intTorque) { m_internalTorque += intTorque; }
 
 void Rigidbody::Update(float dt, float t) {
 	
@@ -55,8 +61,12 @@ void Rigidbody::Update(float dt, float t) {
 	// Calculate derivatives.
 	glm::vec3 A1DXDT = m_velocity;
 	glm::quat A1DQDT = 0.5f * glm::quat(0, m_angularVelocity) * m_orientation;	// Quaternion representation of angular vel has no real portion.
-	glm::vec3 A1DPDT = m_force(t, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
-	glm::vec3 A1DLDT = m_torque(t, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+	//glm::vec3 A1DPDT = m_force(t, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+	//glm::vec3 A1DLDT = m_torque(t, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+	glm::vec3 A1DPDT = m_externalForce + m_internalForce;
+	glm::vec3 A1DLDT = m_externalTorque + m_internalTorque;
+	m_internalForce = glm::vec3(0);
+	m_internalTorque = glm::vec3(0);
 	// Calculate the RK4 value for first step.
 	XN = m_position + halfdt * A1DXDT;
 	QN = m_orientation + halfdt * A1DQDT;
@@ -97,8 +107,22 @@ void Rigidbody::Update(float dt, float t) {
 	m_angularMomentum += sixthdt * (A1DLDT + 2.0f * (A2DLDT + A3DLDT) + A4DLDT);
 	Convert(m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	// All the state variables should have correct and consistent information.
+
+	// Update external force to correspond to new time t + dt.
+	m_externalForce = m_force(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+	m_externalTorque = m_torque(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+
+	// Update the entities themselves.
+	Rigidbody::Draw();
 }
 
+void Rigidbody::Draw()
+{
+	for (auto ent : m_entities) {
+		ent->pos = m_position;
+		ent->rotQuat = m_orientation;
+	}
+}
 
 void Rigidbody::SetState(glm::vec3 position, glm::quat orientation, glm::vec3 momentum, glm::vec3 angularMomentum)
 {
@@ -118,6 +142,10 @@ void Rigidbody::GetState(glm::vec3& position, glm::quat& orientation, glm::vec3&
 
 void Rigidbody::GetPosition(glm::vec3& position) const { position = m_position; }
 
+void Rigidbody::SetForceFunction(Function force) { m_force = force; }
+
+void Rigidbody::SetTorqueFunction(Function torque) { m_torque = torque; }
+
 void Rigidbody::Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm::vec3& V, glm::vec3& W) const
 {
 	R = glm::toMat3(Q);
@@ -127,4 +155,4 @@ void Rigidbody::Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm
 
 // Mesh/entity getters.
 glm::vec3 Rigidbody::GetAxis(unsigned best) const { return static_cast<glm::vec3>(m_entity->GetModelMatrix()[best]); }
-const glm::mat4& Rigidbody::GetModelMatrix() const { return m_entity->GetModelMatrix(); }
+const glm::mat4 Rigidbody::GetModelMatrix() const { return m_entity->GetModelMatrix(); }

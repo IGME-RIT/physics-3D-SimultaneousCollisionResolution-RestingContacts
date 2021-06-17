@@ -47,8 +47,14 @@ public:
 	void SetForceFunction(Function force);
 	void SetTorqueFunction(Function torque);
 
+	void AppendInternalForce(glm::vec3 intForce);
+	void AppendInternalTorque(glm::vec3 intTorque);
+
 	// RK4 diff eq solver.
 	void Update(float t, float dt);
+
+	// Called from update, updates the values of the entity.
+	void Draw();
 
 	// Pulling state out of the struct.
 	// State variables.
@@ -88,7 +94,7 @@ protected:
 // Section for underlying entities and mesh.
 public:
 	glm::vec3 GetAxis(unsigned best) const;
-	const glm::mat4& GetModelMatrix() const;
+	const glm::mat4 GetModelMatrix() const;
 
 	// Mesh related attributes.
 	glm::vec3 m_min;
@@ -102,5 +108,39 @@ protected:
 	std::shared_ptr<Entity> m_entity;					// Primary entity to base variables on.
 	std::vector<std::shared_ptr<Entity>> m_entities;	// List of all entities to adjust the same.
 
+};
+
+// Adding some force functions as examples.
+struct ForceFunctions 
+{
+
+	// Typedef used for force/torque equations. Contains the state of object/current time.
+	//typedef glm::vec3(*Function)
+	//(
+	//	double,		// current time (not dt)
+	//	glm::vec3,	// position
+	//	glm::quat,	// orientation
+	//	glm::vec3,	// momentum
+	//	glm::vec3,	// angular momentum
+	//	glm::mat3,	// orientation matrix
+	//	glm::vec3,	// velocity
+	//	glm::vec3	// angular velocity
+	//);
+
+	static glm::vec3 NoForce(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+		return glm::vec3(0, 0, 0);
+	}
+
+	static glm::vec3 NoTorque(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+		return glm::vec3(0, 0, 0);
+	}
+
+	static glm::vec3 Gravity(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+		return glm::vec3(0, -1, 0);
+	}
+
+	static glm::vec3 Clockwise(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+		return glm::vec3(1, 0, 0);
+	}
 };
 
