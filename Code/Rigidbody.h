@@ -88,6 +88,10 @@ protected:
 	Function m_force;
 	Function m_torque;
 
+	// Body inertia tensors (don't change with rotation, used to calculate actuala inertia tensor).
+	glm::mat3 m_bodyInertia;
+	glm::mat3 m_bodyInvInertia;
+
 	// Flags for this object (can create bitwise flags if enough show up)
 	bool m_isMovable = true;
 

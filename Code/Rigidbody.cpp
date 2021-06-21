@@ -26,13 +26,20 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 
 	// Assume that we dealing with cuboids.
 	m_mass = 1;
-	m_inertia = glm::mat3(
+	if (isMovable == false) {
+		m_mass = 1000000;
+	}
+	m_bodyInertia = glm::mat3(
 		m_mass * (glm::pow(m_halfwidth.y * 2.f, 2) + glm::pow(m_halfwidth.z * 2.f, 2)) / 12.f, 0, 0,
 		0, m_mass * (glm::pow(m_halfwidth.x * 2.f, 2) + glm::pow(m_halfwidth.z * 2.f, 2)) / 12.f, 0,
 		0, 0, m_mass * (glm::pow(m_halfwidth.x * 2.f, 2) + glm::pow(m_halfwidth.y * 2.f, 2)) / 12.f
 	);
 	m_invMass = 1 / m_mass;
-	m_invInertia = glm::inverse(m_inertia);	
+	m_bodyInvInertia = glm::inverse(m_bodyInertia);	
+
+	// Update the inertia tensors.
+	m_inertia = m_bodyInertia;
+	m_invInertia = m_bodyInvInertia;
 
 	// Set default position to entity position.
 	m_position = m_entity->GetWorldPosition();
@@ -107,10 +114,17 @@ void Rigidbody::Update(float dt, float t) {
 	m_angularMomentum += sixthdt * (A1DLDT + 2.0f * (A2DLDT + A3DLDT) + A4DLDT);
 	Convert(m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	// All the state variables should have correct and consistent information.
+	//m_orientation = glm::normalize(m_orientation);
+
+	// Update the inertia tensors.
+	m_inertia = m_orientationMatrix * m_bodyInertia * glm::transpose(m_orientationMatrix);
+	m_invInertia = m_orientationMatrix * m_bodyInvInertia * glm::transpose(m_orientationMatrix);
 
 	// Update external force to correspond to new time t + dt.
 	m_externalForce = m_force(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	m_externalTorque = m_torque(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+
+
 
 	// Update the entities themselves.
 	Rigidbody::Draw();
@@ -150,7 +164,7 @@ void Rigidbody::Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm
 {
 	R = glm::toMat3(Q);
 	V = m_invMass * P;
-	W = R * m_invInertia * glm::transpose(R) * L; // J(t)^-1 = R(t) * J_body^-1 * R(t)^T
+	W = R * m_bodyInvInertia * glm::transpose(R) * L; // J(t)^-1 = R(t) * J_body^-1 * R(t)^T
 }
 
 // Mesh/entity getters.

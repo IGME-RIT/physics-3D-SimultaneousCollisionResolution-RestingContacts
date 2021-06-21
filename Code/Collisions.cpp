@@ -164,19 +164,18 @@ namespace Collisions {
 	{
 		for (int i = 0; i < contacts.size(); i++) {
 			Contact ci = contacts[i];
-			glm::vec3 rANi = glm::cross(ci.contactPoint - ci.bodyOne->GetAxis(0), ci.contactNormal);
-			glm::vec3 rBNi = glm::cross(ci.contactPoint - ci.bodyTwo->GetAxis(0), ci.contactNormal);
+			glm::vec3 rANi = glm::cross(ci.contactPoint - ci.bodyOne->m_position, ci.contactNormal);
+			glm::vec3 rBNi = glm::cross(ci.contactPoint - ci.bodyTwo->m_position, ci.contactNormal);
 
 			for (int j = 0; j < contacts.size(); j++) {
 				Contact cj = contacts[j];
-				glm::vec3 rANj = glm::cross(cj.contactPoint - cj.bodyOne->GetAxis(0), cj.contactNormal);
-				glm::vec3 rBNj = glm::cross(cj.contactPoint - cj.bodyTwo->GetAxis(0), cj.contactNormal);
+				glm::vec3 rANj = glm::cross(cj.contactPoint - cj.bodyOne->m_position, cj.contactNormal);
+				glm::vec3 rBNj = glm::cross(cj.contactPoint - cj.bodyTwo->m_position, cj.contactNormal);
 
 				float& A_ij = A[i * contacts.size() + j];
 				A_ij = 0;
 
 				if (ci.bodyOne == cj.bodyOne) {
-					// personal note: massinv is 1/mass, jinv is inverse inertia tensor.
 					A_ij += ci.bodyOne->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
 					A_ij += glm::dot(rANi, ci.bodyOne->m_invInertia * rANj);
 				}
@@ -186,12 +185,12 @@ namespace Collisions {
 				}
 
 				if (ci.bodyTwo == cj.bodyOne) {
-					A_ij += ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
-					A_ij += glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
-				}
-				else if (ci.bodyTwo == cj.bodyTwo) {
 					A_ij -= ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
 					A_ij -= glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
+				}
+				else if (ci.bodyTwo == cj.bodyTwo) {
+					A_ij += ci.bodyTwo->m_invMass * glm::dot(ci.contactNormal, cj.contactNormal);
+					A_ij += glm::dot(rBNi, ci.bodyTwo->m_invInertia * rBNj);
 				}
 			}
 		}
@@ -204,8 +203,10 @@ namespace Collisions {
 		for (int i = 0; i < contacts.size(); i++) {
 			Contact ci = contacts[i];
 			
-			glm::vec3 velA = ci.bodyOne->m_velocity + glm::cross(ci.bodyOne->m_angularVelocity, ci.contactPoint - ci.bodyOne->m_position);
-			glm::vec3 velB = ci.bodyTwo->m_velocity + glm::cross(ci.bodyTwo->m_angularVelocity, ci.contactPoint - ci.bodyTwo->m_position);
+			glm::vec3 rAi = ci.contactPoint - ci.bodyOne->m_position;
+			glm::vec3 rBi = ci.contactPoint - ci.bodyTwo->m_position;
+			glm::vec3 velA = ci.bodyOne->m_velocity + glm::cross(ci.bodyOne->m_angularVelocity, rAi);
+			glm::vec3 velB = ci.bodyTwo->m_velocity + glm::cross(ci.bodyTwo->m_angularVelocity, rBi);
 			ddot[i] = glm::dot(ci.contactNormal, velA - velB);
 		}
 
@@ -316,10 +317,11 @@ namespace Collisions {
 			}
 		}
 
+		// Fill the S matrix: S = A^T * A
 		// Fill the M matrix:
-		// { 2s  0 -A
-		//    0  0  A
-		//    A -A  0 }
+		// { 2s -A  A
+		//    A  0  0
+		//   -A  0  0 }
 		gte::GMatrix<float> S = gte::MultiplyATB(A, A);
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < size; j++) {
@@ -354,19 +356,20 @@ namespace Collisions {
 		if (lcpSolver.Solve(QVector, MVector, WVector, ZVector, result.get())) {
 			// Get the output of f, calculate dpos.
 			std::copy_n(ZVector.begin(), size, f.begin());
-			// dpos = Af + b
-			//for (int i = 0; i < size; i++) {
-			//	dpos[i] = 0;
-			//	for (int j = 0; j < size; j++) {
-			//		dpos[i] += (A(i, j) * f[j]) + b[j];
-			//	}
-			//}
+			// dpos = Af + dneg
+			for (int i = 0; i < size; i++) {
+				dpos[i] = dneg[i];
+				for (int j = 0; j < size; j++) {
+					dpos[i] += (A(i, j) * f[j]);
+				}
+			}
 
 			if (*result == gte::LCPSolver<float>::Result::HAS_TRIVIAL_SOLUTION) {
 				std::cout << "Trivial Result" << std::endl;
 			}
 			else {
-				std::cout << "Proper result." << std::endl;
+				std::cout << "W: (" << WVector[0] << ", " << WVector[1] << ", " << WVector[2] << ")," << std::endl;
+				std::cout << "Z: (" << ZVector[0] << ", " << ZVector[1] << ", " << ZVector[2] << ")" << std::endl;
 			}
 		}
 		else {

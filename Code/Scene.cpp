@@ -49,7 +49,7 @@ Scene::Scene()
 	skyEntity->texture[0] = skyTex;
 	skyEntity->CreateDescriptorSetBasic();
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(1, 0.5, 0.5), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(1.1f, 1, 1.f), glm::vec3(1, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
@@ -252,8 +252,8 @@ void Scene::UpdatePhysics(float dt, float t) {
 		// Guarantee no interpenetration by relAcc >= 0.
 		Collisions::ComputeRestingContactVector(contacts, restingB);
 		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(size);
-		lcpSolver.Solve(A, restingB, relAcc, restingMag);
-		Collisions::DoMotion(t, dt, contacts, restingMag);
+		if(lcpSolver.Solve(A, restingB, relAcc, restingMag));
+			Collisions::DoMotion(t, dt, contacts, restingMag);
 	}
 	contacts.clear();
 
