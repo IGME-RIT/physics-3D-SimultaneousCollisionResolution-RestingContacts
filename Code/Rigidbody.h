@@ -78,6 +78,9 @@ public:
 	float m_invMass;
 	glm::mat3 m_invInertia;
 
+	// We keep track of the next dt to use for this object.
+	float m_dt;
+
 // Section for physics related variables.
 protected:
 
@@ -97,7 +100,9 @@ protected:
 
 // Section for underlying entities and mesh.
 public:
-	glm::vec3 GetAxis(unsigned best) const;
+	glm::vec3 GetAxis(int best) const;
+	// Get the support vector of this hull (cuboid) based on input vector.
+	glm::vec3 GetSupport(glm::vec3 v) const;
 	const glm::mat4 GetModelMatrix() const;
 
 	// Mesh related attributes.

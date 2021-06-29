@@ -168,5 +168,9 @@ void Rigidbody::Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm
 }
 
 // Mesh/entity getters.
-glm::vec3 Rigidbody::GetAxis(unsigned best) const { return static_cast<glm::vec3>(m_entity->GetModelMatrix()[best]); }
+glm::vec3 Rigidbody::GetAxis(int best) const { 
+	// 0-2 returns normal axis, 3-5 returns negative normal axis.
+	return ((float) (-2 * (best / 3) + 1)) * static_cast<glm::vec3>(m_entity->GetModelMatrix()[best % 3]); 
+}
+glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const { return m_position + (glm::sign(v) * m_halfwidth); }	// Support point equation for cuboid.
 const glm::mat4 Rigidbody::GetModelMatrix() const { return m_entity->GetModelMatrix(); }

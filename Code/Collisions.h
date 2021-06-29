@@ -40,7 +40,7 @@ namespace Collisions {
 		Contact* contacts;			// Points to the next blank element of the array.
 		int contactsLeft;			// Number of remaining contacts the array can take.
 		unsigned numOfContacts;		// Total number of contacts already in the array.
-		
+
 		CollisionData(unsigned maxContacts) {
 			contactArray = new Contact[maxContacts];
 			contacts = contactArray;
@@ -65,10 +65,22 @@ namespace Collisions {
 		}
 	};
 
+	// Taken from GDC2015 talk by Dirk Gregorius
+	struct ContactManifold {
+		int PointCount;
+		Contact Points[4];
+		glm::vec3 Normal;
+	};
+
 #pragma region Collision Detection Functions
+
+
+
 	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
-	bool BoxBox (
+	bool BoxBox(
+		const float& t,
+		const float& dt,
 		Rigidbody& one,
 		Rigidbody& two,
 		Collisions::CollisionData* data
@@ -81,8 +93,36 @@ namespace Collisions {
 		const Rigidbody& two
 	);
 
+	// Hull based SAT, taken from GDC 2015 talk by Dirk Gregorius.
+	void SAT(const Rigidbody& one, const Rigidbody& two, ContactManifold& manifold);
+}
+namespace {
+	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, unsigned& largestPenIndex);
+	void QueryEdgeDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, glm::vec3& edgeDirection, glm::vec3& edgeMidpoint, glm::vec3& supportPoint);
+	void CreateFaceContact
+	(
+		Collisions::ContactManifold& manifold,
+		const Rigidbody& one,
+		const float& aLargestPen,
+		const unsigned& aLargestPenIndex,
+		const Rigidbody& two,
+		const float& bLargestPen,
+		const unsigned& bLargestPenIndex
+	);
+	void CreateEdgeContact
+	(
+		Collisions::ContactManifold& manifold,
+		const Rigidbody& one,
+		const Rigidbody& two,
+		const float& edgeLargestPen,
+		glm::vec3& edgeDirection,
+		glm::vec3& edgeMidpoint,
+		glm::vec3& supportPoint
+	);
+}
 #pragma endregion Collision Detection Functions
 
+namespace Collisions {
 // Collision resolution ideas taken from the book "Game Physics", by David Eberly.
 #pragma region Collision Resolution Functions
 	// Function that takes in a list of ALL collisions in the scene, and generates an LCP matrix based on them.
@@ -116,8 +156,17 @@ namespace {
 
 #pragma endregion Collision Resolution Helper Functions
 
+	// New SAT helper functions.
+	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, float& largestPenIndex);
+	void QueryEdgeDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, float& largestPenIndex);
+
 
 #pragma region Collision Detection Helper Functions
+
+
+
+
+
 	inline glm::vec3 contactPoint(
 		const glm::vec3& pOne,
 		const glm::vec3& dOne,
@@ -147,26 +196,23 @@ namespace {
 		const glm::vec3& axis
 	);
 
-	inline float penetrationOnAxis(
-		const Rigidbody& one,
-		const glm::mat3& oneModel,
-		const Rigidbody& two,
-		const glm::mat3& twoModel,
-		const glm::vec3& axis,
-		const glm::vec3& toCenter
-	);
 
 	inline bool tryAxis(
-		const Rigidbody& one,
+		Rigidbody& one,
 		const glm::mat3& oneModel,
-		const Rigidbody& two,
+		Rigidbody& two,
 		const glm::mat3& twoModel,
 		glm::vec3 axis,					// Non-const as we normalize it.
-		const glm::vec3& toCenter,		// Passed in to avoid lots of recalculation.
 		unsigned index,
+		const glm::vec3& toCenter,		// Passed in to avoid lots of recalculation.
+		const glm::vec3& relativeVel,
+		const float& t,
+		const float& dt,
 		// Values that can be updated
 		float& smallestPenetration,
-		unsigned& smallestIndex
+		unsigned& smallestIndex,
+		float& earliestTimeOfCollision,
+		float& latestTimeOfCollision
 	);
 #pragma endregion Collision Detection Helper Functions
 }

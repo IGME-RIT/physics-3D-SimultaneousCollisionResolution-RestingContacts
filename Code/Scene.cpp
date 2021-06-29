@@ -49,7 +49,7 @@ Scene::Scene()
 	skyEntity->texture[0] = skyTex;
 	skyEntity->CreateDescriptorSetBasic();
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(1.1f, 1, 1.f), glm::vec3(1, 0.5, 0.5), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
@@ -202,6 +202,11 @@ void Scene::CheckKeyboardInput() {
 
 void Scene::UpdatePhysics(float dt, float t) {
 
+	// Set each rigidbody to update dt time (can be changed by collision detection).
+	for (int i = 0; i < rigidbodies.size(); i++) {
+		rigidbodies[i]->m_dt = dt;
+	}
+
 	// Check collisions.
 	for (int i = 0; i < rigidbodies.size(); i++) {
 
@@ -213,8 +218,11 @@ void Scene::UpdatePhysics(float dt, float t) {
 			if (Collisions::BoundingSphere(*rigidbodies[i].get(), *rigidbodies[j].get())) {
 
 				// Create collision data var, check using SAT.
-				std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(8);
-				Collisions::BoxBox(*rigidbodies[i].get(), *rigidbodies[j].get(), data.get());
+				std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(4);
+				Collisions::BoxBox(t, dt, *rigidbodies[i].get(), *rigidbodies[j].get(), data.get());
+
+				//std::shared_ptr<Collisions::ContactManifold> manifold = std::make_shared<Collisions::ContactManifold>();
+				//Collisions::SAT(*rigidbodies[i].get(), *rigidbodies[j].get(), *manifold.get());
 
 				// If there's a collision, change the colors of the rigidbody outlines.
 				if (data->numOfContacts > 0) {
@@ -259,7 +267,7 @@ void Scene::UpdatePhysics(float dt, float t) {
 
 	// Update rigidbodies.
 	for (std::shared_ptr<Rigidbody> rb : rigidbodies) {
-		rb->Update(dt, t);
+		rb->Update(rb->m_dt, t);
 	}
 }
 
