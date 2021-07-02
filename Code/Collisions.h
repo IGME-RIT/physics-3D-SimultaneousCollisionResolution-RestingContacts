@@ -94,30 +94,42 @@ namespace Collisions {
 	);
 
 	// Hull based SAT, taken from GDC 2015 talk by Dirk Gregorius.
-	void SAT(const Rigidbody& one, const Rigidbody& two, ContactManifold& manifold);
+	void SAT(Rigidbody& one, Rigidbody& two, ContactManifold& manifold);
 }
 namespace {
 	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, unsigned& largestPenIndex);
-	void QueryEdgeDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, glm::vec3& edgeDirection, glm::vec3& edgeMidpoint, glm::vec3& supportPoint);
+	void QueryEdgeDirections
+	(
+		const Rigidbody& one, 
+		const Rigidbody& two, 
+		float& largestPen, 
+		glm::vec3& oneEdgeDirection, 
+		glm::vec3& oneEdgePoint, 
+		glm::vec3& twoEdgeDirection,
+		glm::vec3& twoEdgePoint,
+		glm::vec3& collisionAxis
+	);
 	void CreateFaceContact
 	(
 		Collisions::ContactManifold& manifold,
-		const Rigidbody& one,
+		Rigidbody& one,
 		const float& aLargestPen,
 		const unsigned& aLargestPenIndex,
-		const Rigidbody& two,
+		Rigidbody& two,
 		const float& bLargestPen,
 		const unsigned& bLargestPenIndex
 	);
 	void CreateEdgeContact
 	(
 		Collisions::ContactManifold& manifold,
-		const Rigidbody& one,
-		const Rigidbody& two,
+		Rigidbody& one,
+		Rigidbody& two,
 		const float& edgeLargestPen,
-		glm::vec3& edgeDirection,
-		glm::vec3& edgeMidpoint,
-		glm::vec3& supportPoint
+		glm::vec3& oneEdgeDirection,
+		glm::vec3& oneEdgePoint,
+		glm::vec3& twoEdgeDirection,
+		glm::vec3& twoEdgePoint,
+		glm::vec3& collisionAxis
 	);
 }
 #pragma endregion Collision Detection Functions

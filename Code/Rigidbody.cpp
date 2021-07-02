@@ -172,5 +172,9 @@ glm::vec3 Rigidbody::GetAxis(int best) const {
 	// 0-2 returns normal axis, 3-5 returns negative normal axis.
 	return ((float) (-2 * (best / 3) + 1)) * static_cast<glm::vec3>(m_entity->GetModelMatrix()[best % 3]); 
 }
-glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const { return m_position + (glm::sign(v) * m_halfwidth); }	// Support point equation for cuboid.
+glm::vec3 Rigidbody::GetLocalAxis(int best) const {
+	// 0-2 returns normal axis, 3-5 returns negative normal axis.
+	return ((float)(-2 * (best / 3) + 1)) * glm::mat3()[best % 3];
+}
+glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const { return m_position + m_orientation * (glm::sign(v) * m_halfwidth); }	// Support point equation for cuboid.
 const glm::mat4 Rigidbody::GetModelMatrix() const { return m_entity->GetModelMatrix(); }

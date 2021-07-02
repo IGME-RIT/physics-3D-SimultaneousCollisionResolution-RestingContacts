@@ -101,6 +101,7 @@ protected:
 // Section for underlying entities and mesh.
 public:
 	glm::vec3 GetAxis(int best) const;
+	glm::vec3 GetLocalAxis(int best) const;
 	// Get the support vector of this hull (cuboid) based on input vector.
 	glm::vec3 GetSupport(glm::vec3 v) const;
 	const glm::mat4 GetModelMatrix() const;
@@ -122,7 +123,7 @@ protected:
 // Adding some force functions as examples.
 struct ForceFunctions 
 {
-
+	// Comment for easier explaination of the function inputs.
 	// Typedef used for force/torque equations. Contains the state of object/current time.
 	//typedef glm::vec3(*Function)
 	//(

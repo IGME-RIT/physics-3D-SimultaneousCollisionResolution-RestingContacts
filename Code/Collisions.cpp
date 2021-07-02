@@ -7,162 +7,10 @@
 
 // If we detect penetration/non-penetration within this threshold, we have a contact.
 #define COLLISION_THRESHOLD 0.01f
+// Face contacts are usually better, so we apply a bias for it over edge edge contacts.
+#define FACE_COLLISION_BIAS 0.02f
 
 namespace Collisions {
-
-#pragma region OLD Collision Detection Functions
-
-
-	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
-	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
-	bool Collisions::BoxBox(
-		const float& t,
-		const float& dt,
-		Rigidbody& one,
-		Rigidbody& two,
-		Collisions::CollisionData* data
-	)
-	{
-		// Update the model matrices of each rigidbody (not sure if necessary).
-		const glm::mat3 oneModel = (glm::mat3) one.GetModelMatrix();
-		const glm::mat3 twoModel = (glm::mat3) two.GetModelMatrix();
-		const glm::vec3 toCenter = two.m_position - one.m_position;
-		const glm::vec3 relativeVelocity = two.m_velocity - one.m_velocity;
-
-
-		// We assume they aren't penetrating to start.
-		float pen = FLT_MAX;		// Amount the objects are penetrating
-		unsigned best = 0xffffff;	// Index of the axis the best pen occured on.
-		float earliestTimeOfCollision = -FLT_MAX;
-		float latestTimeOfCollision = FLT_MAX;
-
-		// Check the big six axes (return zero if they aren't colliding).
-		if (!tryAxis(one, oneModel, two, twoModel, oneModel[0], 0, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, oneModel[1], 1, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, oneModel[2], 2, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		
-		if (!tryAxis(one, oneModel, two, twoModel, twoModel[0], 3, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, twoModel[1], 4, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, twoModel[2], 5, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		
-		// Store the best axis-major, in case we run into parallel edge collisions later.
-		unsigned bestSingleAxis = best;
-		
-		// Check the last nine axes.
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[0], twoModel[0]), 6, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[0], twoModel[1]), 7, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[0], twoModel[2]), 8, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[1], twoModel[0]), 9, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[1], twoModel[1]), 10, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[1], twoModel[2]), 11, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[2], twoModel[0]), 12, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[2], twoModel[1]), 13, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-		if (!tryAxis(one, oneModel, two, twoModel, glm::cross(oneModel[2], twoModel[2]), 14, toCenter, relativeVelocity, t, dt, pen, best, earliestTimeOfCollision, latestTimeOfCollision)) return 0;
-
-
-		// They must be colliding or will be colliding. If the predicted time of collision is within the next frame, set the rigidbodies dt to take a partial step.
-		// UPDATE: This is done in tryAxis for early outs.
-		//std::cout << "t, earliest = " << t << ", " << earliestTimeOfCollision << std::endl;
-		//if (earliestTimeOfCollision > t && earliestTimeOfCollision < t + dt) {
-		//	float new_dt = earliestTimeOfCollision - t;
-		//	if (new_dt < one.m_dt) one.m_dt = new_dt;
-		//	if (new_dt < two.m_dt) two.m_dt = new_dt;
-		//}
-		assert(best != 0xffffff);
-		
-		// We have a collision, and we know which axis it was on, and we deal accordingly.
-		if (best < 3) {
-			// Vertex face collision, face on box one, vertex on box two.
-			fillPointFaceBoxBox(one, two, toCenter, data, best, pen);
-			data->contacts->bodyOne = &one;
-			data->contacts->bodyTwo = &two;
-			data->AddContacts(1);
-			return 1;
-		}
-		else if (best < 6) {
-			// Vertex face collision, face on box two, vertex on box one.
-			fillPointFaceBoxBox(two, one, toCenter * -1.0f, data, best - 3, pen);
-			data->contacts->bodyOne = &one;
-			data->contacts->bodyTwo = &two;
-			data->AddContacts(1);
-			return 1;
-		}
-		else {
-			// Edge edge collision.
-			best -= 6;
-			unsigned oneAxisIndex = best / 3;
-			unsigned twoAxisIndex = best % 3;
-			glm::vec3 oneAxis = one.GetAxis(oneAxisIndex);
-			glm::vec3 twoAxis = two.GetAxis(twoAxisIndex);
-			glm::vec3 axis = glm::cross(oneAxis, twoAxis);
-			axis = glm::normalize(axis);
-
-			// The axis should point from box one to box two.
-			if (glm::dot(axis, toCenter) > 0) axis = axis * -1.0f;
-
-			// We have the axes, but not the edges: each axis has 4 edges parallel
-			// to it, we need to find which of the 4 for each object. We do
-			// that by finding the point in the centre of the edge. We know
-			// its component in the direction of the box's collision axis is zero
-			// (its a mid-point) and we determine which of the extremes in each
-			// of the other axes is closest.
-			glm::vec3 ptOnOneEdge, ptOnTwoEdge;
-			ptOnOneEdge = one.m_halfwidth;
-			ptOnTwoEdge = two.m_halfwidth;
-			for (unsigned i = 0; i < 3; i++)
-			{
-				if (i == oneAxisIndex) ptOnOneEdge[i] = 0;
-				else if (glm::dot(one.GetAxis(i), axis) > 0) ptOnOneEdge[i] = -ptOnOneEdge[i];
-
-				if (i == twoAxisIndex) ptOnTwoEdge[i] = 0;
-				else if (glm::dot(two.GetAxis(i), axis) < 0) ptOnTwoEdge[i] = -ptOnTwoEdge[i];
-			}
-
-			// Get both of the edges as normalized vectors in world space (to pass into the contact).
-			glm::vec3 oneEdge = ptOnOneEdge;
-			oneEdge[oneAxisIndex] = one.m_halfwidth[oneAxisIndex];
-			oneEdge = static_cast<glm::vec3>(one.GetModelMatrix() * glm::vec4(oneEdge, 0));	// Zero because we care about direction, not location.
-			oneEdge = glm::normalize(oneEdge);
-
-			glm::vec3 twoEdge = ptOnTwoEdge;
-			twoEdge[oneAxisIndex] = two.m_halfwidth[twoAxisIndex];
-			twoEdge = static_cast<glm::vec3>(two.GetModelMatrix() * glm::vec4(twoEdge, 0));
-			twoEdge = glm::normalize(twoEdge);
-
-			// Move them into world coordinates (they are already oriented
-			// correctly, since they have been derived from the axes).
-			// I think they aren't actually oriented correctly, as halfwidth isn't oriented. Multiply by model matrix instead.
-			ptOnOneEdge = static_cast<glm::vec3>(one.GetModelMatrix() * glm::vec4(ptOnOneEdge, 1));
-			ptOnTwoEdge = static_cast<glm::vec3>(two.GetModelMatrix() * glm::vec4(ptOnTwoEdge, 1));
-
-			// So we have a point and a direction for the colliding edges.
-			// We need to find out point of closest approach of the two
-			// line-segments.
-			glm::vec3 vertex = contactPoint(
-				ptOnOneEdge, oneAxis, one.m_halfwidth[oneAxisIndex],
-				ptOnTwoEdge, twoAxis, two.m_halfwidth[twoAxisIndex],
-				bestSingleAxis > 2
-			);
-
-			// We can fill the contact.
-			Contact* contact = data->contacts;
-
-			contact->penetrationDepth = pen;
-			contact->contactNormal = axis;
-			contact->contactPoint = vertex;
-
-			contact->edgeOne = oneEdge;
-			contact->edgeTwo = twoEdge;
-			contact->isVFContact = false;
-
-			contact->bodyOne = &one;
-			contact->bodyTwo = &two;
-
-			data->AddContacts(1);
-			return 1;
-		}
-	}
-
 	bool BoundingSphere(const Rigidbody& one, const Rigidbody& two)
 	{
 		float a = glm::length2(two.m_position - one.m_position);
@@ -173,203 +21,10 @@ namespace Collisions {
 	}
 }
 
-	// Private namespace for helper functions.
-namespace {
-
-	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L349
-	inline glm::vec3 contactPoint(
-		const glm::vec3& pOne,
-		const glm::vec3& dOne,
-		float oneSize,
-		const glm::vec3& pTwo,
-		const glm::vec3& dTwo,
-		float twoSize,
-
-		// If this is true, and the contact point is outside
-		// the edge (in the case of an edge-face contact) then
-		// we use one's midpoint, otherwise we use two's.
-		bool useOne
-	)
-	{
-		glm::vec3 toSt, cOne, cTwo;
-		float dpStaOne, dpStaTwo, dpOneTwo, smOne, smTwo;
-		float denom, mua, mub;
-
-		smOne = glm::length2(dOne);
-		smTwo = glm::length2(dTwo);
-		dpOneTwo = glm::dot(dTwo, dOne);
-
-		toSt = pOne - pTwo;
-		dpStaOne = glm::dot(dOne, toSt);
-		dpStaTwo = glm::dot(dTwo, toSt);
-
-		denom = smOne * smTwo - dpOneTwo * dpOneTwo;
-
-		// Zero denominator indicates parrallel lines
-		if (abs(denom) < 0.0001f) {
-			return useOne ? pOne : pTwo;
-		}
-
-		mua = (dpOneTwo * dpStaTwo - smTwo * dpStaOne) / denom;
-		mub = (smOne * dpStaTwo - dpOneTwo * dpStaOne) / denom;
-
-		// If either of the edges has the nearest point out
-		// of bounds, then the edges aren't crossed, we have
-		// an edge-face contact. Our point is on the edge, which
-		// we know from the useOne parameter.
-		if (mua > oneSize ||
-			mua < -oneSize ||
-			mub > twoSize ||
-			mub < -twoSize)
-		{
-			return useOne ? pOne : pTwo;
-		}
-		else
-		{
-			cOne = pOne + dOne * mua;
-			cTwo = pTwo + dTwo * mub;
-
-			return cOne * 0.5f + cTwo * 0.5f;
-		}
-	}
-
-	// Method is called when we know we have vertex-face collision.
-	// Pulled from: https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L311
-	inline void fillPointFaceBoxBox(
-		const Rigidbody& one,
-		const Rigidbody& two,
-		const glm::vec3& toCenter,
-		Collisions::CollisionData* data,
-		unsigned best,
-		float pen
-	)
-	{
-		Collisions::Contact* contact = data->contacts;
-
-		// We know axis, but which of the two faces is the collision on.
-		glm::vec3 normal = one.GetAxis(best);
-		if (glm::dot(normal, toCenter) > 0) {
-			normal *= -1.0f;
-		}
-
-		// Figure out the vertex that is colliding (just using toCenter doesn't work!)
-		glm::vec3 vertex = two.m_halfwidth;
-		if (glm::dot(two.GetAxis(0), normal) < 0) vertex.x *= -1.0f;
-		if (glm::dot(two.GetAxis(1), normal) < 0) vertex.y *= -1.0f;
-		if (glm::dot(two.GetAxis(2), normal) < 0) vertex.z *= -1.0f;
-
-		// Create the contat data.
-		contact->contactNormal = normal;
-		contact->penetrationDepth = pen;
-		// Convert from local space to world, accounting for translations.
-		glm::mat4 twoModelMatrix = two.GetModelMatrix();	// Make copy of the matrix.
-		contact->contactPoint = static_cast<glm::vec3>(twoModelMatrix * glm::vec4(vertex, 1));
-
-		contact->isVFContact = true;	// It's a vertex-face contact.
-	}
-
-	// Projects the largest halfwidth onto the given axis.
-	// Returns
-	inline float projectOnAxis(
-		const Rigidbody& rb,
-		const glm::mat3& model,
-		const glm::vec3& axis
-	)
-	{
-		// Might be able to optimize this, not sure.
-		return
-			rb.m_halfwidth.x * glm::abs(glm::dot(glm::fastNormalize(model[0]), axis)) +
-			rb.m_halfwidth.y * glm::abs(glm::dot(glm::fastNormalize(model[1]), axis)) +
-			rb.m_halfwidth.z * glm::abs(glm::dot(glm::fastNormalize(model[2]), axis));
-	}
-
-
-	// Function that determinees if the two input rigidbodies are colliding along the given axis.
-	// Taken from https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L285
-	// Adjusted to account for time of collision, logic from here: https://pybullet.org/Bullet/phpBB3/viewtopic.php?t=138
-
-	/*  
-		* LOGIC: Against the specified axis, we project both objects and the relative velocity. At t0, if the objects are seperated and moving
-		* apart, we know that the two objects will not collide during this interval. Otherwise, we compute the earliest future time of collision,
-		* and the latest future time where they will stop colliding (if they are colliding at t0, the earliest time is t0). If the maximum earliest
-		* future time from all the axes is less than the minimum latest future time from all the axes, the maximum earliest future intersection time
-		* is the time of collision. Otherwise, there is no collision.
-		*/ 
-	bool tryAxis(
-		Rigidbody& one,
-		const glm::mat3& oneModel,
-		Rigidbody& two,
-		const glm::mat3& twoModel,
-		glm::vec3 axis,					// Non-const as we normalize it.
-		unsigned index,
-		const glm::vec3& toCenter,		// Passed in to avoid lots of recalculation.
-		const glm::vec3& relativeVel,
-		const float& t,
-		const float& dt,
-		// Values that can be updated
-		float& smallestPenetration,
-		unsigned& smallestIndex,
-		float& earliestTimeOfCollision,
-		float& latestTimeOfCollision
-	)
-	{
-		// Make sure the given axis wasn't generated from two near parallel axes.
-		if (glm::length2(axis) < 0.001) return true;
-		axis = glm::normalize(axis);
-
-		// Get the overlap (positive means overlap, negative is no overlap).
-		float oneProj = projectOnAxis(one, oneModel, axis);
-		float twoProj = projectOnAxis(two, twoModel, axis);
-		float centerProj = glm::dot(toCenter, axis);
-		float penetration = oneProj + twoProj - glm::abs(centerProj);
-
-		// Project the relative velocity onto the axis to get speed.
-		float projectedSpeed = centerProj < 0 ? glm::dot(two.m_velocity - one.m_velocity, axis) : glm::dot(one.m_velocity - two.m_velocity, axis);
-
-		// EARLY OUT: If the objects are not overlapping and projected relative velocity is moving away, they will not collide.
-		//std::cout << "Pen/Speed/axis: " << penetration << ", " << projectedSpeed << ", " << axis[0] << axis[1] << axis[2] << std::endl;
-		if (penetration < -COLLISION_THRESHOLD && projectedSpeed <= 0) return false;
-
-		// 0 = penetration + projectedSpeed * (earliestTimeOfCollision - t)
-		float localEarliestTimeOfCollision = (-penetration / projectedSpeed) + t;
-
-		// 2 * (oneProj + twoProj) = projectedSpeed * (latestTimeOfCollision - earliestTimeOfCollision)
-		float localLatestTimeOfCollision = (2.f / projectedSpeed) * (oneProj + twoProj) + localEarliestTimeOfCollision;
-
-		// Keep the maximum earliest and the minimum latest.
-		if (localEarliestTimeOfCollision > earliestTimeOfCollision) earliestTimeOfCollision = localEarliestTimeOfCollision;
-		if (localLatestTimeOfCollision < latestTimeOfCollision) latestTimeOfCollision = localLatestTimeOfCollision;
-
-		// EARLY OUT: If the maximum earliest is greater than minimum latest of all axes tested so far, no future collision.
-		if (earliestTimeOfCollision > latestTimeOfCollision) return false;
-
-		// At this point, if pen < 0, we know they aren't colliding this frame.
-		if (penetration < -COLLISION_THRESHOLD) {
-			// If they will be colliding next frame, reduce the amount of distance travelled next frame.
-			if (earliestTimeOfCollision > t && earliestTimeOfCollision < t + dt) {
-				float new_dt = earliestTimeOfCollision - t;
-				if (new_dt < one.m_dt) one.m_dt = new_dt;
-				if (new_dt < two.m_dt) two.m_dt = new_dt;
-				std::cout << "New dt for two objects: " << new_dt << std::endl;
-			}
-			return false;
-		}
-
-		if (penetration < smallestPenetration) {	// We found our new smallest penetration.
-			smallestPenetration = penetration;
-			smallestIndex = index;
-		}
-
-		return true;
-
-	}
-}
-#pragma endregion OLD Collision Detection Functions
-
 namespace Collisions {
 #pragma region NEW Collision Detection Functions
 
-	void SAT(const Rigidbody& one, const Rigidbody& two, ContactManifold& manifold)
+	void SAT(Rigidbody& one, Rigidbody& two, ContactManifold& manifold)
 	{
 		unsigned AFaceQueryPenIndex = 0; 
 		float AFaceQueryPen = -FLT_MAX;
@@ -382,17 +37,17 @@ namespace Collisions {
 		if (BFaceQueryPen > 0.f) return;	// separating axis found.
 
 		float CEdgeQueryPen = -FLT_MAX;
-		glm::vec3 edgeDirection, edgePoint, supportPoint;
-		QueryEdgeDirections(one, two, CEdgeQueryPen, edgeDirection, edgePoint, supportPoint);
+		glm::vec3 oneEdgeDirection, oneEdgePoint, twoEdgeDirection, twoEdgePoint, collisionAxis;
+		QueryEdgeDirections(one, two, CEdgeQueryPen, oneEdgeDirection, oneEdgePoint, twoEdgeDirection, twoEdgePoint, collisionAxis);
 		if (CEdgeQueryPen > 0.f) return;	// separating axis found.
 
 		// Hulls must overlap.
-		bool blsFaceContactA = AFaceQueryPen >= CEdgeQueryPen;
-		bool blsFaceContactB = BFaceQueryPen >= CEdgeQueryPen;
+		bool blsFaceContactA = AFaceQueryPen + FACE_COLLISION_BIAS >= CEdgeQueryPen;
+		bool blsFaceContactB = BFaceQueryPen + FACE_COLLISION_BIAS >= CEdgeQueryPen;
 		if (blsFaceContactA && blsFaceContactB)
 			CreateFaceContact(manifold, one, AFaceQueryPen, AFaceQueryPenIndex, two, BFaceQueryPen, BFaceQueryPenIndex);
 		else
-			CreateEdgeContact(manifold, one, two, CEdgeQueryPen, edgeDirection, edgePoint, supportPoint);
+			CreateEdgeContact(manifold, one, two, CEdgeQueryPen, oneEdgeDirection, oneEdgePoint, twoEdgeDirection, twoEdgePoint, collisionAxis);
 
 	}
 
@@ -406,12 +61,33 @@ namespace Collisions {
 
 // Helper functions.
 namespace {
+	// FIX THIS
+
 	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, unsigned& largestPenIndex) {
 		for (int index = 0; index < 6; ++index) {
 			glm::vec3 planeNormalA = one.GetAxis(index);
-			glm::vec3 planeCenterA = planeNormalA * one.m_halfwidth + one.m_position;
-			glm::vec3 vertexB = two.GetSupport(-planeNormalA);
+			
+			glm::vec3 planeLocalNormalA = one.GetLocalAxis(index);
+			glm::vec3 localProjectedNormal = glm::dot(planeLocalNormalA, one.m_halfwidth) * planeLocalNormalA;
+			if (planeLocalNormalA.x + planeLocalNormalA.y + planeLocalNormalA.z < 0)
+				localProjectedNormal = -localProjectedNormal;
+			glm::vec3 planeCenterA = one.m_orientation * localProjectedNormal + one.m_position;
+
+			//glm::vec3 projectedHalfwidth = glm::sign(planeNormalA) * planeNormalA * glm::dot(planeNormalA, glm::abs(one.m_orientationMatrix * one.m_halfwidth));
+			//glm::vec3 planeCenterA = glm::sign(planeNormalA) * planeNormalA * glm::dot(planeNormalA, glm::abs(one.m_orientationMatrix * one.m_halfwidth)) + one.m_position;
+			//glm::vec3 planeCenterA = one.m_orientation * glm::sign(one.GetLocalAxis(index)) * (glm::abs(one.GetLocalAxis(index)) * glm::dot(glm::abs(one.GetLocalAxis(index)), one.m_halfwidth)) + one.m_position;
+			glm::vec3 vertexB = two.GetSupport(-planeLocalNormalA);
 			float distance = glm::dot(planeNormalA, (vertexB - planeCenterA));	// If distance is greater than zero, we found seperating axis.
+
+			if (distance > 0.0f) {
+				std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
+				//std::cout << "Projected halfwidth: " << projectedHalfwidth[0] << ", " << projectedHalfwidth[1] << ", " << projectedHalfwidth[2] << std::endl;
+				std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
+				std::cout << "Plane center: " << planeCenterA[0] << ", " << planeCenterA[1] << ", " << planeCenterA[2] << std::endl;
+				std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
+				std::cout << "Distance: " << distance << std::endl << std::endl;
+			}
+			
 
 			if (largestPen < distance) {
 				largestPen = distance;
@@ -420,7 +96,18 @@ namespace {
 		}
 	}
 
-	void QueryEdgeDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, glm::vec3& edgeDirection, glm::vec3& edgeMidpoint, glm::vec3& supportPoint) {
+	void QueryEdgeDirections
+	(
+		const Rigidbody& one,
+		const Rigidbody& two,
+		float& largestPen,
+		glm::vec3& oneEdgeDirection,
+		glm::vec3& oneEdgePoint,
+		glm::vec3& twoEdgeDirection,
+		glm::vec3& twoEdgePoint,
+		glm::vec3& collisionAxis
+	) 
+	{
 		// Greatly simplifying this function due to dealing with cuboids (usually would have to test every edge pair for convex hull).
 		const glm::mat3 oneModel = (glm::mat3) one.GetModelMatrix();
 		const glm::mat3 twoModel = (glm::mat3) two.GetModelMatrix();
@@ -431,7 +118,7 @@ namespace {
 				glm::vec3 axis = glm::cross(oneModel[i], twoModel[j]);
 				if (glm::length2(axis) < 0.001f) continue;	// Skip near parallel edges.
 
-				// Get all the center point of all four edges that point in this direction (in local space translation).
+				// Get all the center point of all four edges that point in the axis direction.
 				std::vector<glm::vec3> localEdges;
 				localEdges.push_back(( oneModel[(i + 1) % 3] + oneModel[(i + 2) % 3]) * one.m_halfwidth + one.m_position);
 				localEdges.push_back(( oneModel[(i + 1) % 3] - oneModel[(i + 2) % 3]) * one.m_halfwidth + one.m_position);
@@ -450,9 +137,11 @@ namespace {
 					if (largestPen < distance) {
 						largestPen = distance;
 						// Information about the collision (or lack thereof)
-						edgeDirection = axis;
-						edgeMidpoint = edgePoint;
-						supportPoint = vertexB;
+						oneEdgeDirection = oneModel[i];
+						oneEdgePoint = edgePoint;
+						twoEdgeDirection = twoModel[j];
+						twoEdgePoint = vertexB;
+						collisionAxis = axis;
 					}
 				}
 
@@ -466,23 +155,23 @@ namespace {
 	void CreateFaceContact
 	(
 		Collisions::ContactManifold& manifold, 
-		const Rigidbody& one, 
+		Rigidbody& one, 
 		const float& aLargestPen,
 		const unsigned& aLargestPenIndex,
-		const Rigidbody& two,
+		Rigidbody& two,
 		const float& bLargestPen,
 		const unsigned& bLargestPenIndex
 	) 
 	{
-		const Rigidbody* incidentBody; 
-		const Rigidbody* referenceBody;
+		Rigidbody* incidentBody; 
+		Rigidbody* referenceBody;
 		glm::vec3 referenceFaceNormal, incidentFaceNormal;
 		
 		auto GenerateManifold = [&]
 		(
 			Collisions::ContactManifold& manifold,
-			const Rigidbody& referenceBody,
-			const Rigidbody& incidentBody,
+			Rigidbody& referenceBody,
+			Rigidbody& incidentBody,
 			const unsigned& penIndex
 		)
 		{
@@ -499,7 +188,9 @@ namespace {
 			unsigned indexOfIncidentFace;
 			for (int i = 0; i < 6; ++i) {
 				testingFaceNormal = incidentBody.GetAxis(i);
-				if (glm::dot(testingFaceNormal, referenceFaceNormal) < smallestDot) {
+				float dot = glm::dot(testingFaceNormal, referenceFaceNormal);
+				if (dot < smallestDot) {
+					smallestDot = dot;
 					incidentFaceNormal = testingFaceNormal;
 					indexOfIncidentFace = i;
 				}
@@ -513,8 +204,8 @@ namespace {
 				const unsigned& i = indexOfIncidentFace;
 				incidentFacePoints.push_back((incidentFaceNormal + incidentModelMatrix[(i + 1) % 3] + incidentModelMatrix[(i + 2) % 3]) * incidentBody.m_halfwidth + incidentBody.m_position);
 				incidentFacePoints.push_back((incidentFaceNormal + incidentModelMatrix[(i + 1) % 3] - incidentModelMatrix[(i + 2) % 3]) * incidentBody.m_halfwidth + incidentBody.m_position);
-				incidentFacePoints.push_back((incidentFaceNormal - incidentModelMatrix[(i + 1) % 3] + incidentModelMatrix[(i + 2) % 3]) * incidentBody.m_halfwidth + incidentBody.m_position);
 				incidentFacePoints.push_back((incidentFaceNormal - incidentModelMatrix[(i + 1) % 3] - incidentModelMatrix[(i + 2) % 3]) * incidentBody.m_halfwidth + incidentBody.m_position);
+				incidentFacePoints.push_back((incidentFaceNormal - incidentModelMatrix[(i + 1) % 3] + incidentModelMatrix[(i + 2) % 3]) * incidentBody.m_halfwidth + incidentBody.m_position);
 			}
 
 			// Clip them against the four side planes.
@@ -556,8 +247,33 @@ namespace {
 				incidentFacePoints = clippedFacePoints;
 				clippedFacePoints.clear();
 			}
-			std::cout << "hi";
-		};
+			
+			// Once we have our set of points, move the set of contact points to the reference face.
+			std::vector<glm::vec3> projectedPoints;
+			glm::vec3 referencePlanePoint = referenceBody.m_position + (referenceFaceNormal * referenceBody.m_halfwidth);
+			for (glm::vec3 point : incidentFacePoints) {
+				// projPoint = p - (DOT(p-a, n) / DOT(n, n)) * n
+				projectedPoints.push_back(point - glm::dot(point - referencePlanePoint, referenceFaceNormal) / glm::length2(referenceFaceNormal) * referenceFaceNormal);
+			}
+
+			// If we have more than four contact points, reduce to four.
+
+
+			// Create the manifold.
+			for (int i = 0; i < projectedPoints.size(); i++) {
+				Collisions::Contact c;
+				c.bodyOne = &incidentBody;
+				c.bodyTwo = &referenceBody;
+				c.contactNormal = referenceFaceNormal;
+				c.contactPoint = projectedPoints[i];
+				manifold.Points[i] = c;
+				manifold.PointCount++;
+			}
+			manifold.Normal = referenceFaceNormal;
+
+
+
+		};	// End of GenerateManifold function.
 
 		if (aLargestPen < bLargestPen) {
 			// B penetrates A
@@ -572,18 +288,51 @@ namespace {
 	void CreateEdgeContact
 	(
 		Collisions::ContactManifold& manifold,
-		const Rigidbody& one,
-		const Rigidbody& two,
+		Rigidbody& one,
+		Rigidbody& two,
 		const float& edgeLargestPen,
-		glm::vec3& edgeDirection, 
-		glm::vec3& edgeMidpoint, 
-		glm::vec3& supportPoint
+		glm::vec3& oneEdgeDirection,
+		glm::vec3& oneEdgePoint,
+		glm::vec3& twoEdgeDirection,
+		glm::vec3& twoEdgePoint,
+		glm::vec3& collisionAxis
 	)
 	{
-		std::cout << "edge contact" << std::endl;
+		std::cout << "Edge-edge contact occured." << std::endl;
+
+		// Find the closest point on each edge to the other edge.
+		// The line between the closest points will be perpendicular to both edges.
+		glm::vec3 closestDirection = glm::normalize(glm::cross(oneEdgeDirection, twoEdgeDirection));
+
+		// Equations to find closest points sourced from math exchange post: 
+		// https://math.stackexchange.com/questions/1414285/location-of-shortest-distance-between-two-skew-lines-in-3d
+		glm::vec3 n_1 = glm::cross(oneEdgeDirection, closestDirection);
+		glm::vec3 n_2 = glm::cross(twoEdgeDirection, closestDirection);
+		glm::vec3 oneClosestPoint = oneEdgePoint + (glm::dot(twoEdgePoint - oneEdgePoint, n_2) / glm::dot(oneEdgeDirection, n_2)) * oneEdgeDirection;
+		glm::vec3 twoClosestPoint = twoEdgePoint + (glm::dot(oneEdgePoint - twoEdgePoint, n_1) / glm::dot(twoEdgeDirection, n_1)) * twoEdgeDirection;
+
+		// Find our "contact normal", which is the cross product between edges and
+
+		// Contact point is the midpoint of these two closest points.
+		Collisions::Contact c;
+		c.contactPoint = (oneClosestPoint + twoClosestPoint) / 2.f;
+		c.contactNormal = collisionAxis;
+		c.bodyOne = &one;
+		c.bodyTwo = &two;
+		c.edgeOne = oneEdgeDirection;
+		c.edgeTwo = twoEdgeDirection;
+		c.isVFContact = false;
+
+		manifold.Points[0] = c;
+		manifold.PointCount = 1;
 	}
 
 }	// End of empty namespace.
+
+
+
+
+
 
 
 namespace Collisions {
