@@ -8,7 +8,7 @@
 // If we detect penetration/non-penetration within this threshold, we have a contact.
 #define COLLISION_THRESHOLD 0.01f
 // Face contacts are usually better, so we apply a bias for it over edge edge contacts.
-#define FACE_COLLISION_BIAS 0.02f
+#define FACE_COLLISION_BIAS 0.05f
 
 namespace Collisions {
 	bool BoundingSphere(const Rigidbody& one, const Rigidbody& two)
@@ -66,26 +66,31 @@ namespace {
 	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, unsigned& largestPenIndex) {
 		for (int index = 0; index < 6; ++index) {
 			glm::vec3 planeNormalA = one.GetAxis(index);
+			//std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
 			
+			// Due to issues with projecting onto negative facing axes, we reverse the 
+			// projected normal before converting to world space if necessary.
 			glm::vec3 planeLocalNormalA = one.GetLocalAxis(index);
 			glm::vec3 localProjectedNormal = glm::dot(planeLocalNormalA, one.m_halfwidth) * planeLocalNormalA;
 			if (planeLocalNormalA.x + planeLocalNormalA.y + planeLocalNormalA.z < 0)
 				localProjectedNormal = -localProjectedNormal;
 			glm::vec3 planeCenterA = one.m_orientation * localProjectedNormal + one.m_position;
 
-			//glm::vec3 projectedHalfwidth = glm::sign(planeNormalA) * planeNormalA * glm::dot(planeNormalA, glm::abs(one.m_orientationMatrix * one.m_halfwidth));
-			//glm::vec3 planeCenterA = glm::sign(planeNormalA) * planeNormalA * glm::dot(planeNormalA, glm::abs(one.m_orientationMatrix * one.m_halfwidth)) + one.m_position;
-			//glm::vec3 planeCenterA = one.m_orientation * glm::sign(one.GetLocalAxis(index)) * (glm::abs(one.GetLocalAxis(index)) * glm::dot(glm::abs(one.GetLocalAxis(index)), one.m_halfwidth)) + one.m_position;
-			glm::vec3 vertexB = two.GetSupport(-planeLocalNormalA);
-			float distance = glm::dot(planeNormalA, (vertexB - planeCenterA));	// If distance is greater than zero, we found seperating axis.
+			glm::vec3 vertexB; float distance;
+			glm::vec3 negNormal = -planeNormalA;
+			vertexB = two.GetSupport(negNormal);
+			distance = glm::dot(vertexB - planeCenterA, planeNormalA);
 
+			//two.GetSupportAndDistance(-planeNormalA, planeCenterA, vertexB, distance);
+
+			// Debugging information.
 			if (distance > 0.0f) {
-				std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
-				//std::cout << "Projected halfwidth: " << projectedHalfwidth[0] << ", " << projectedHalfwidth[1] << ", " << projectedHalfwidth[2] << std::endl;
-				std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
-				std::cout << "Plane center: " << planeCenterA[0] << ", " << planeCenterA[1] << ", " << planeCenterA[2] << std::endl;
-				std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
-				std::cout << "Distance: " << distance << std::endl << std::endl;
+				//std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
+				////std::cout << "Projected halfwidth: " << projectedHalfwidth[0] << ", " << projectedHalfwidth[1] << ", " << projectedHalfwidth[2] << std::endl;
+				//std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
+				//std::cout << "Plane center: " << planeCenterA[0] << ", " << planeCenterA[1] << ", " << planeCenterA[2] << std::endl;
+				//std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
+				//std::cout << "Distance: " << distance << std::endl << std::endl;
 			}
 			
 
@@ -115,15 +120,24 @@ namespace {
 		for (int i = 0; i < 3; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				// Get the axis to project against.
-				glm::vec3 axis = glm::cross(oneModel[i], twoModel[j]);
+				glm::vec3 axis = glm::normalize(glm::cross(oneModel[i], twoModel[j]));
 				if (glm::length2(axis) < 0.001f) continue;	// Skip near parallel edges.
+
+				// Get the modified halfwidth to compute the edges that point in this axis direction.
+				glm::vec3 modHalf = one.m_halfwidth;
+				modHalf[i] = 0.0f;
 
 				// Get all the center point of all four edges that point in the axis direction.
 				std::vector<glm::vec3> localEdges;
-				localEdges.push_back(( oneModel[(i + 1) % 3] + oneModel[(i + 2) % 3]) * one.m_halfwidth + one.m_position);
-				localEdges.push_back(( oneModel[(i + 1) % 3] - oneModel[(i + 2) % 3]) * one.m_halfwidth + one.m_position);
-				localEdges.push_back((-oneModel[(i + 1) % 3] + oneModel[(i + 2) % 3]) * one.m_halfwidth + one.m_position);
-				localEdges.push_back((-oneModel[(i + 1) % 3] - oneModel[(i + 2) % 3]) * one.m_halfwidth + one.m_position);
+				glm::vec3 point;	// temp variable.
+				point = one.m_halfwidth;
+				localEdges.push_back(one.m_position + one.m_orientation * point);
+				point[(i + 1) % 3] *= -1.0f;
+				localEdges.push_back(one.m_position + one.m_orientation * point);
+				point[(i + 2) % 3] *= -1.0f;
+				localEdges.push_back(one.m_position + one.m_orientation * point);
+				point[(i + 1) % 3] *= -1.0f;
+				localEdges.push_back(one.m_position + one.m_orientation * point);
 
 				for (glm::vec3 edgePoint : localEdges) {
 					// Make sure axis is the right direction for this edge.
@@ -132,16 +146,31 @@ namespace {
 
 					// Get the distance between plane and support vertex (plane has normal axis and ptOnEdge is located on plane).
 					glm::vec3 vertexB = two.GetSupport(-axis);
-					float distance = glm::dot(axis, (vertexB - edgePoint));
+					// Breaking away from the powerpoint presentation, we test against the furthest point in the axis direction INSTEAD
+					// of testing against the edge itself due to edge cases where that would rightfully fail.
+					glm::vec3 vertexA = one.GetSupport(axis);
+					float distance = glm::dot(vertexB - vertexA, axis);
 
-					if (largestPen < distance) {
+					if (distance > largestPen) {
 						largestPen = distance;
 						// Information about the collision (or lack thereof)
 						oneEdgeDirection = oneModel[i];
-						oneEdgePoint = edgePoint;
+						oneEdgePoint = vertexA;
 						twoEdgeDirection = twoModel[j];
 						twoEdgePoint = vertexB;
 						collisionAxis = axis;
+					}
+
+					// Debugging print console statements.
+					if (distance > 0) {
+						//std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
+						//////std::cout << "Projected halfwidth: " << projectedHalfwidth[0] << ", " << projectedHalfwidth[1] << ", " << projectedHalfwidth[2] << std::endl;
+						//std::cout << "Edge cross normal: " << axis[0] << ", " << axis[1] << ", " << axis[2] << std::endl;
+						//std::cout << "Edge point: " << edgePoint[0] << ", " << edgePoint[1] << ", " << edgePoint[2] << std::endl;
+						//std::cout << "Edge direction: " << oneModel[i][0] << ", " << oneModel[i][1] << ", " << oneModel[i][2] << std::endl;
+						//std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
+						//std::cout << "Distance: " << distance << std::endl;
+						//std::cout << "Axis dot" << glm::dot(axis, edgePoint - one.m_position) << std::endl << std::endl;
 					}
 				}
 
@@ -213,10 +242,16 @@ namespace {
 			for (int i = 0; i < 6; i++) {
 				if (i == penIndex || i == (penIndex + 3) % 6) continue;
 				glm::vec3 clippingPlaneNormal = referenceBody.GetAxis(i);
-				glm::vec3 clippingPlanePoint = referenceBody.m_position + (clippingPlaneNormal * referenceBody.m_halfwidth);
+				// Get the clipping plane centerpoint.
+				glm::vec3 planeLocalNormalA = referenceBody.GetLocalAxis(i);
+				glm::vec3 localProjectedNormal = glm::dot(planeLocalNormalA, referenceBody.m_halfwidth) * planeLocalNormalA;
+				if (planeLocalNormalA.x + planeLocalNormalA.y + planeLocalNormalA.z < 0)
+					localProjectedNormal = -localProjectedNormal;
+				glm::vec3 clippingPlanePoint = referenceBody.m_orientation * localProjectedNormal + referenceBody.m_position;
+				//glm::vec3 clippingPlanePoint = referenceBody.m_position + (clippingPlaneNormal * referenceBody.m_halfwidth);
 
 				// Clip each edge.
-				for (int j = 0; j < 4; j++) {
+				for (int j = 0; j < incidentFacePoints.size(); j++) {
 					glm::vec3& currentPoint = incidentFacePoints[j];
 					glm::vec3& nextPoint = incidentFacePoints[(j + 1) % 4];
 
@@ -266,6 +301,7 @@ namespace {
 				c.bodyTwo = &referenceBody;
 				c.contactNormal = referenceFaceNormal;
 				c.contactPoint = projectedPoints[i];
+				c.isVFContact = true;
 				manifold.Points[i] = c;
 				manifold.PointCount++;
 			}
@@ -316,7 +352,7 @@ namespace {
 		// Contact point is the midpoint of these two closest points.
 		Collisions::Contact c;
 		c.contactPoint = (oneClosestPoint + twoClosestPoint) / 2.f;
-		c.contactNormal = collisionAxis;
+		c.contactNormal = -collisionAxis;
 		c.bodyOne = &one;
 		c.bodyTwo = &two;
 		c.edgeOne = oneEdgeDirection;
@@ -324,7 +360,7 @@ namespace {
 		c.isVFContact = false;
 
 		manifold.Points[0] = c;
-		manifold.PointCount = 1;
+		manifold.PointCount++;
 	}
 
 }	// End of empty namespace.
@@ -425,7 +461,7 @@ namespace Collisions {
 				glm::vec3 EdgeOnedot = glm::cross(A->m_angularVelocity, ci.edgeOne);
 				glm::vec3 EdgeTwodot = glm::cross(B->m_angularVelocity, ci.edgeTwo);
 				glm::vec3 U = glm::cross(ci.edgeOne, EdgeTwodot) + glm::cross(EdgeOnedot, ci.edgeTwo);
-				Ndot = (U - glm::dot(U, ci.contactNormal)) * ci.contactNormal / glm::length(glm::cross(ci.edgeOne, ci.edgeTwo));
+				Ndot = (U - glm::dot(U, ci.contactNormal) * ci.contactNormal) / glm::length(glm::cross(ci.edgeOne, ci.edgeTwo));
 			}
 
 			// Compute b vector element.

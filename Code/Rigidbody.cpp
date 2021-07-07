@@ -168,6 +168,7 @@ void Rigidbody::Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm
 }
 
 // Mesh/entity getters.
+// All of these functions are set up to work with rectangular prisms/cuboids, and would need to be adjusted for other polyhedra.
 glm::vec3 Rigidbody::GetAxis(int best) const { 
 	// 0-2 returns normal axis, 3-5 returns negative normal axis.
 	return ((float) (-2 * (best / 3) + 1)) * static_cast<glm::vec3>(m_entity->GetModelMatrix()[best % 3]); 
@@ -176,5 +177,49 @@ glm::vec3 Rigidbody::GetLocalAxis(int best) const {
 	// 0-2 returns normal axis, 3-5 returns negative normal axis.
 	return ((float)(-2 * (best / 3) + 1)) * glm::mat3()[best % 3];
 }
-glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const { return m_position + m_orientation * (glm::sign(v) * m_halfwidth); }	// Support point equation for cuboid.
 const glm::mat4 Rigidbody::GetModelMatrix() const { return m_entity->GetModelMatrix(); }
+
+// This support function takes in a WORLD SPACE vector. We convert to local space, use the cuboid
+// support function to find support point in local space, and convert to world space. For generic
+// polyhedra, we would have to loop through the vertices to determine the support point, giving at
+// best O(log n), or a trivial O(n) impelmentation.
+glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const {
+	// Convert to local space.
+	//v = glm::transpose(m_orientationMatrix) * v;
+	float max = -FLT_MAX;
+	glm::vec3 support;
+	for (int i = 0; i < 8; i++) {
+		glm::vec3 p = glm::vec3(((i / 4) * 2 - 1) * m_halfwidth.x, (((i % 4) / 2) * 2 - 1) * m_halfwidth.y, ((i % 2) * 2 - 1) * m_halfwidth.z);
+		p = m_position + m_orientation * p;
+		if (glm::dot(p, v) > max) {
+			support = p;
+			max = glm::dot(p, v);
+			//std::cout << "v: " << v[0] << ", " << v[1] << ", " << v[2] << std::endl;
+			//std::cout << p[0] << ", " << p[1] << ", " << p[2] << std::endl;
+		}
+	}
+	//std::cout << std::endl;
+	// Convert to world space.
+	return support;
+	
+	//glm::vec3 local = glm::sign(glm::inverse(m_orientation) * (v + glm::vec3(FLT_EPSILON)));
+	//if (glm::dot(-local, v) > glm::dot(local, v))
+	//	local = -local;
+	//return m_position + m_orientation * local * m_halfwidth;
+}	
+
+void Rigidbody::GetSupportAndDistance(const glm::vec3& v, const glm::vec3& p, glm::vec3& supp, float& dist) const
+{
+	// Convert to local space.
+	glm::vec3 vT = glm::transpose(m_orientationMatrix) * v;
+	dist = -FLT_MAX;
+	for (int i = 0; i < 8; i++) {
+		glm::vec3 localPoint = glm::vec3(((i / 4) * 2 - 1) * m_halfwidth.x, (((i % 4) / 2) * 2 - 1) * m_halfwidth.y, ((i % 2) * 2 - 1) * m_halfwidth.z);
+		if (glm::dot(localPoint - p, vT) > dist) {
+			supp = localPoint;
+			dist = glm::dot(localPoint - p, vT);
+		}
+	}
+	// Convert to world space.
+	supp = m_position + m_orientation * supp;
+}

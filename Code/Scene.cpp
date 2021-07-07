@@ -49,20 +49,22 @@ Scene::Scene()
 	skyEntity->texture[0] = skyTex;
 	skyEntity->CreateDescriptorSetBasic();
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(2.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(-0.3f, 1, 1.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 2, 1.1f), glm::vec3(0.5, 1.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 2, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(-0.3f, 1, 1.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(2, -2, 0.5f), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
+	// Static one.
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -1, 0.0f), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), false));
 	rigidbodies[1]->SetForceFunction(ForceFunctions::NoForce);
 	rigidbodies[1]->SetTorqueFunction(ForceFunctions::NoTorque);
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 0, 0), glm::vec3(0.1f, 0.1, 0.1), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers(), false));
-	rigidbodies[2]->SetForceFunction(ForceFunctions::NoForce);
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 2.5f, 0), glm::vec3(0.7f, 0.7f, 0.7f), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers()));
+	rigidbodies[2]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[2]->SetTorqueFunction(ForceFunctions::NoTorque);
 
 	// Get a time for when the scene starts.
@@ -288,13 +290,10 @@ void Scene::UpdateCamera() {
 
 	/* Removed default spinning animation. */
 
-	cameraPosition = {
-		dist * sin(angle),
-		2.0f,
-		dist * cos(angle) + adjustZ };
+	cameraPosition = { 10.0f, 1.0f, 00.0f };
 
 	// The position of the camera
-	glm::vec3 focus = { 0, 0, 0 };				// The position the camera is looking at
+	glm::vec3 focus = { 0, 0.0f, .0f };				// The position the camera is looking at
 	glm::vec3 up = { 0.0f, 1.0f, 0.0 };			// The direction that faces up, which is the Y axis
 	d->view_matrix = glm::lookAt(cameraPosition, focus, up);	// build the view matrix from thsi data
 

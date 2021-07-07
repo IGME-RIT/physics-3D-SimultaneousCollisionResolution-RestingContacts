@@ -104,6 +104,8 @@ public:
 	glm::vec3 GetLocalAxis(int best) const;
 	// Get the support vector of this hull (cuboid) based on input vector.
 	glm::vec3 GetSupport(glm::vec3 v) const;
+	// Workaround to get the proper support, returns the support point and greatest depth.
+	void GetSupportAndDistance(const glm::vec3& v, const glm::vec3& p, glm::vec3& supp, float& dist) const;
 	const glm::mat4 GetModelMatrix() const;
 
 	// Mesh related attributes.
@@ -150,7 +152,7 @@ struct ForceFunctions
 	}
 
 	static glm::vec3 Clockwise(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
-		return glm::vec3(1, 0, 0);
+		return glm::vec3(.01f, 0, 0);
 	}
 };
 
