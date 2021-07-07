@@ -17,6 +17,7 @@
 
 
 namespace Collisions {
+
 	// Class to store a contact point. This gets used by ContactData which stores contact points.
 	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/contacts.h#L59
 	// This version has been modified to account for storing Rigidbodies and edges. If it's a VF contact, the two edges are invalid.
@@ -30,61 +31,20 @@ namespace Collisions {
 		float penetrationDepth = 0.f;
 		glm::vec3 edgeOne = glm::vec3(0);
 		glm::vec3 edgeTwo = glm::vec3(0);
-		bool isVFContact = false;			// Is it a vertex-face contact (true) or edge edge contact (false).
+		// Is it a vertex-face contact (true) or edge edge contact (false).
+		bool isVFContact = false;			
 	};
 
-	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/collide_fine.h#L183
-	class CollisionData {
-	public:
-		Contact* contactArray;		// Points to the first element of the array.
-		Contact* contacts;			// Points to the next blank element of the array.
-		int contactsLeft;			// Number of remaining contacts the array can take.
-		unsigned numOfContacts;		// Total number of contacts already in the array.
-
-		CollisionData(unsigned maxContacts) {
-			contactArray = new Contact[maxContacts];
-			contacts = contactArray;
-			contactsLeft = maxContacts;
-			numOfContacts = 0;
-		}
-		~CollisionData() {
-			delete[] contactArray;
-			contactArray = nullptr;
-			contacts = nullptr;
-		}
-
-		void AddContacts(unsigned count) {
-			contactsLeft -= count;
-			numOfContacts += count;
-
-			contacts += count;	// Move array forward.
-		}
-
-		bool IsFull() {
-			return contactsLeft <= 0;
-		}
-	};
-
+	// Stores a number of contact points on a plane.
 	// Taken from GDC2015 talk by Dirk Gregorius
 	struct ContactManifold {
-		int PointCount;
-		Contact Points[4];
-		glm::vec3 Normal;
+		int PointCount = 0;
+		std::vector<Contact> Points;
+		glm::vec3 Normal = glm::vec3(0);
 	};
 
 #pragma region Collision Detection Functions
 
-
-
-	// Collisions between two cuboids, returns bool and penetration data utilizing SAT.
-	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/src/collide_fine.cpp#L409
-	bool BoxBox(
-		const float& t,
-		const float& dt,
-		Rigidbody& one,
-		Rigidbody& two,
-		Collisions::CollisionData* data
-	);
 
 	// We don't return a collision data, as this is just a preliminary check.
 	// Call this before BoxBox.
@@ -94,10 +54,27 @@ namespace Collisions {
 	);
 
 	// Hull based SAT, taken from GDC 2015 talk by Dirk Gregorius.
+	// The functions and code were designed to work with cuboids only, but
+	// can be modified to work with general hulls.
+	// http://media.steampowered.com/apps/valve/2015/DirkGregorius_Contacts.pdf
 	void SAT(Rigidbody& one, Rigidbody& two, ContactManifold& manifold);
 }
+
+// Helper functions for our implementation of SAT.
 namespace {
-	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, unsigned& largestPenIndex);
+
+	// Check if there's no collision between the faces
+	// of the two Rigidbodies (must be called twice).
+	void QueryFaceDirections
+	(
+		const Rigidbody& one, 
+		const Rigidbody& two, 
+		float& largestPen, 
+		unsigned& largestPenIndex
+	);
+
+	// Check if there's no collision between the edges
+	// of the two Rigidbodies (only call once).
 	void QueryEdgeDirections
 	(
 		const Rigidbody& one, 
@@ -109,6 +86,9 @@ namespace {
 		glm::vec3& twoEdgePoint,
 		glm::vec3& collisionAxis
 	);
+
+	// If there's a face-face contact, create the
+	// contact manifold from given information.
 	void CreateFaceContact
 	(
 		Collisions::ContactManifold& manifold,
@@ -119,6 +99,9 @@ namespace {
 		const float& bLargestPen,
 		const unsigned& bLargestPenIndex
 	);
+
+	// If there's a edge-edge contact, create the
+	// contact manifold from given information.
 	void CreateEdgeContact
 	(
 		Collisions::ContactManifold& manifold,
@@ -158,73 +141,4 @@ namespace Collisions {
 	void Minimize(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f);
 
 #pragma endregion Collision Resolution Functions
-}
-
-// Private namespace for helper functions.
-namespace {
-#pragma region Collision Resolution Helper Functions
-
-
-
-#pragma endregion Collision Resolution Helper Functions
-
-	// New SAT helper functions.
-	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, float& largestPenIndex);
-	void QueryEdgeDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, float& largestPenIndex);
-
-
-#pragma region Collision Detection Helper Functions
-
-
-
-
-
-	inline glm::vec3 contactPoint(
-		const glm::vec3& pOne,
-		const glm::vec3& dOne,
-		float oneSize,
-		const glm::vec3& pTwo,
-		const glm::vec3& dTwo,
-		float twoSize,
-
-		// If this is true, and the contact point is outside
-		// the edge (in the case of an edge-face contact) then
-		// we use one's midpoint, otherwise we use two's.
-		bool useOne
-	);
-
-	inline void fillPointFaceBoxBox(
-		const Rigidbody& one,
-		const Rigidbody& two,
-		const glm::vec3& toCenter,
-		Collisions::CollisionData* data,
-		unsigned best,
-		float pen
-	);
-
-	inline float projectOnAxis(
-		const Rigidbody& rb,
-		const glm::mat3& model,
-		const glm::vec3& axis
-	);
-
-
-	inline bool tryAxis(
-		Rigidbody& one,
-		const glm::mat3& oneModel,
-		Rigidbody& two,
-		const glm::mat3& twoModel,
-		glm::vec3 axis,					// Non-const as we normalize it.
-		unsigned index,
-		const glm::vec3& toCenter,		// Passed in to avoid lots of recalculation.
-		const glm::vec3& relativeVel,
-		const float& t,
-		const float& dt,
-		// Values that can be updated
-		float& smallestPenetration,
-		unsigned& smallestIndex,
-		float& earliestTimeOfCollision,
-		float& latestTimeOfCollision
-	);
-#pragma endregion Collision Detection Helper Functions
 }

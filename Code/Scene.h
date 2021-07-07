@@ -53,11 +53,18 @@ private:
 	float lastFramesTime = 0;
 	float totalRunTime = 0;
 
+	// Camera.
+	glm::vec3 cameraPosition;
+	float angle = 0.0f;
+	float adjustZ = 3.0f;
+
+
 	// Functions called from Update
 	void CheckKeyboardInput();
 	void UpdatePhysics(float dt, float t);
 	void UpdateText();
 	void UpdateCamera();
+
 
 public:
 	bool* keys;

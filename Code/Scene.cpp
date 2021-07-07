@@ -49,6 +49,7 @@ Scene::Scene()
 	skyEntity->texture[0] = skyTex;
 	skyEntity->CreateDescriptorSetBasic();
 
+	// Create the enities for the scene.
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 2, 1.1f), glm::vec3(0.5, 1.5, 2), glm::vec3(1, 1, 1)));
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 2, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(-0.3f, 1, 1.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
@@ -71,57 +72,9 @@ Scene::Scene()
 	timePointSceneStart = std::chrono::steady_clock::now();
 	timePointStartOfThisFrame = timePointSceneStart;
 
-	// Demo code for making 2d rectangle.
-	//floor = std::make_unique<Shape>(std::vector<glm::vec3>{ glm::vec3(-10, -10, 0), glm::vec3(1, 1, 1),
-	//														glm::vec3( 10, -10, 0), glm::vec3(1, 1, 1),
-	//														glm::vec3( 10,  -3, 0), glm::vec3(1, 1, 1),
-	//														glm::vec3(-10,  -3, 0), glm::vec3(1, 1, 1), });
-
 }
 
-void Scene::Draw()
-{
-	Demo* d = Demo::GetInstance();
 
-	// clear the list of entities
-	// that are being drawn. This list
-	// is internally built and used by
-	// Demo, and it controls how data
-	// is sent to the GPU
-	d->ResetEntityList();
-
-	// Never try to draw the same entity twice. 
-	// You can make 2 entities with the same Mesh,
-	// but you can't draw the same entity twice.
-	// The Demo system will actually block you from trying
-
-	// Color pipeline	
-	for (auto cuboidPtr : cuboids) {
-		cuboidPtr->Draw(d);
-	}
-
-	// Bind the sky pipeline
-	// Draw the sky, which will use the pipeSky pipeline
-	d->ApplyPipelineSky();
-	d->DrawEntity(skyEntity);
-
-	// bind the hitbox pipeline
-	//d->ApplyPipelineWire();
-	//d->DrawEntity(catHitboxEntity);
-	//d->DrawEntity(dogHitboxEntity);
-}
-
-// used to record time
-float angle = 0.0f;
-float dist = 10.0f;
-float adjustZ = 3.0f;
-bool noPressYet = true;
-glm::vec3 cameraPosition;
-
-char LetterToVirtualKey(char letter)
-{
-	return letter - 20;
-}
 
 void Scene::Update()
 {
@@ -141,94 +94,23 @@ void Scene::Update()
 
 }
 
-void Scene::CheckKeyboardInput() {
-
-	// all key codes are here, https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	// Any of these can go into keys[]
-	// including VK_ESCAPE, which was used in Main.cpp
-	// VK does not mean "vulkan" in this case, VK means "Virtual Key",
-	// it is part of Win32 and can be used in any API
-
-	// to detect input with letters, you must use 
-	// capital letters in the code
-
-	// hitting the letter P on the keyboard
-	// will pause the scene
-	// hitting the letter O will resume.
-
-	if (keys['P'])
-	{
-		isScenePaused = true;
-	}
-	if (keys['O']) {
-		isScenePaused = false;
-	}
-
-	if (keys['A']) {
-		//rigidbodies[0].get()->AddForce(glm::vec3(0, -1, 0), glm::vec3(1, -0.5f, -0.25f));
-	}
-
-
-	if (keys[VK_UP])
-	{
-		// stop using default camera animation
-		noPressYet = false;
-	
-		dist -= 0.05f;
-	
-		if (dist <= 1.0f)
-			dist = 1.0f;
-	}
-	
-	if (keys[VK_DOWN])
-	{
-		// stop using default camera animation
-		noPressYet = false;
-	
-		dist += 0.05f;
-	
-		if (dist >= 9.0f)
-			dist = 9.0f;
-	}
-	
-	if (keys[VK_LEFT])
-	{
-		// stop using default camera animation
-		noPressYet = false;
-	
-		angle -= 0.01f;
-	}
-	
-	if (keys[VK_RIGHT])
-	{
-		// stop using default camera animation
-		noPressYet = false;
-	
-		angle += 0.01f;
-	}
-}
 
 void Scene::UpdatePhysics(float dt, float t) {
 
 	// Set each rigidbody to update dt time (can be changed by collision detection).
 	for (int i = 0; i < rigidbodies.size(); i++) {
 		rigidbodies[i]->m_dt = dt;
+		cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
 	}
 
 	// Check collisions.
 	for (int i = 0; i < rigidbodies.size(); i++) {
-
-		cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
-
 		for (int j = i + 1; j < rigidbodies.size(); j++) {			
 
 			// If they pass the broad phase collision test, do SAT.
 			if (Collisions::BoundingSphere(*rigidbodies[i].get(), *rigidbodies[j].get())) {
 
-				// Create collision data var, check using SAT.
-				//std::shared_ptr<Collisions::CollisionData> data = std::make_shared<Collisions::CollisionData>(4);
-				//Collisions::BoxBox(t, dt, *rigidbodies[i].get(), *rigidbodies[j].get(), data.get());
-
+				// Check collisions using the new SAT method.
 				std::shared_ptr<Collisions::ContactManifold> manifold = std::make_shared<Collisions::ContactManifold>();
 				Collisions::SAT(*rigidbodies[i].get(), *rigidbodies[j].get(), *manifold.get());
 
@@ -263,6 +145,7 @@ void Scene::UpdatePhysics(float dt, float t) {
 		// Guarantee no interpenetration by postRelVel >= 0.
 		Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
 		Collisions::Minimize(A, preRelVel, postRelVel, impulseMag);
+		for (int i = 0; i < impulseMag.size(); ++i) impulseMag[i] *= 0.6f;	
 		Collisions::DoImpulse(contacts, impulseMag);
 
 		// Guarantee no interpenetration by relAcc >= 0.
@@ -279,6 +162,32 @@ void Scene::UpdatePhysics(float dt, float t) {
 	}
 }
 
+
+void Scene::CheckKeyboardInput() {
+
+	// all key codes are here, https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+	// Any of these can go into keys[]
+	// including VK_ESCAPE, which was used in Main.cpp
+	// VK does not mean "vulkan" in this case, VK means "Virtual Key",
+	// it is part of Win32 and can be used in any API
+
+	// to detect input with letters, you must use 
+	// capital letters in the code
+
+	// hitting the letter P on the keyboard
+	// will pause the scene
+	// hitting the letter O will resume.
+
+	if (keys['A'])
+	{
+		angle += 0.01f;
+	}
+	if (keys['D']) {
+		angle -= 0.01f;
+	}
+
+}
+
 void Scene::UpdateCamera() {
 	Demo* d = Demo::GetInstance();
 
@@ -286,11 +195,10 @@ void Scene::UpdateCamera() {
 	// If this looks confusing, go back to
 	// prepare_uniform_buffers and read those comments
 	d->projection_matrix = glm::perspective(45.0f * 3.14159f / 180.0f, (float)d->width / (float)d->height, 0.1f, 100.0f);
-	float adjustZ = 0.0f;
 
 	/* Removed default spinning animation. */
 
-	cameraPosition = { 10.0f, 1.0f, 00.0f };
+	cameraPosition = { 10.0f * cos(angle), 1.0f, 10.0f * sin(angle) };
 
 	// The position of the camera
 	glm::vec3 focus = { 0, 0.0f, .0f };				// The position the camera is looking at
@@ -302,6 +210,45 @@ void Scene::UpdateCamera() {
 	// working, because it sets depth to the maximum possible value
 	skyEntity->pos = cameraPosition;
 	skyEntity->scale = glm::vec3(1.0f);
+}
+
+void Scene::Draw()
+{
+	Demo* d = Demo::GetInstance();
+
+	// clear the list of entities
+	// that are being drawn. This list
+	// is internally built and used by
+	// Demo, and it controls how data
+	// is sent to the GPU
+	d->ResetEntityList();
+
+	// Never try to draw the same entity twice. 
+	// You can make 2 entities with the same Mesh,
+	// but you can't draw the same entity twice.
+	// The Demo system will actually block you from trying
+
+	// Color pipeline	
+	for (auto cuboidPtr : cuboids) {
+		cuboidPtr->Draw(d);
+	}
+
+	// Bind the sky pipeline
+	// Draw the sky, which will use the pipeSky pipeline
+	d->ApplyPipelineSky();
+	d->DrawEntity(skyEntity);
+
+	// bind the hitbox pipeline
+	//d->ApplyPipelineWire();
+	//d->DrawEntity(catHitboxEntity);
+	//d->DrawEntity(dogHitboxEntity);
+}
+
+
+
+char LetterToVirtualKey(char letter)
+{
+	return letter - 20;
 }
 
 void Scene::UpdateText() {

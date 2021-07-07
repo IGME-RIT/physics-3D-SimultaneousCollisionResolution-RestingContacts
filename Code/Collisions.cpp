@@ -6,7 +6,7 @@
 #include <iostream>
 
 // If we detect penetration/non-penetration within this threshold, we have a contact.
-#define COLLISION_THRESHOLD 0.01f
+#define COLLISION_THRESHOLD 0.001f
 // Face contacts are usually better, so we apply a bias for it over edge edge contacts.
 #define FACE_COLLISION_BIAS 0.05f
 
@@ -81,17 +81,14 @@ namespace {
 			vertexB = two.GetSupport(negNormal);
 			distance = glm::dot(vertexB - planeCenterA, planeNormalA);
 
-			//two.GetSupportAndDistance(-planeNormalA, planeCenterA, vertexB, distance);
-
 			// Debugging information.
-			if (distance > 0.0f) {
-				//std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
-				////std::cout << "Projected halfwidth: " << projectedHalfwidth[0] << ", " << projectedHalfwidth[1] << ", " << projectedHalfwidth[2] << std::endl;
-				//std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
-				//std::cout << "Plane center: " << planeCenterA[0] << ", " << planeCenterA[1] << ", " << planeCenterA[2] << std::endl;
-				//std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
-				//std::cout << "Distance: " << distance << std::endl << std::endl;
-			}
+			//if (distance > 0.0f) {
+			//	std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
+			//	std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
+			//	std::cout << "Plane center: " << planeCenterA[0] << ", " << planeCenterA[1] << ", " << planeCenterA[2] << std::endl;
+			//	std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
+			//	std::cout << "Distance: " << distance << std::endl << std::endl;
+			//}
 			
 
 			if (largestPen < distance) {
@@ -162,16 +159,15 @@ namespace {
 					}
 
 					// Debugging print console statements.
-					if (distance > 0) {
-						//std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
-						//////std::cout << "Projected halfwidth: " << projectedHalfwidth[0] << ", " << projectedHalfwidth[1] << ", " << projectedHalfwidth[2] << std::endl;
-						//std::cout << "Edge cross normal: " << axis[0] << ", " << axis[1] << ", " << axis[2] << std::endl;
-						//std::cout << "Edge point: " << edgePoint[0] << ", " << edgePoint[1] << ", " << edgePoint[2] << std::endl;
-						//std::cout << "Edge direction: " << oneModel[i][0] << ", " << oneModel[i][1] << ", " << oneModel[i][2] << std::endl;
-						//std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
-						//std::cout << "Distance: " << distance << std::endl;
-						//std::cout << "Axis dot" << glm::dot(axis, edgePoint - one.m_position) << std::endl << std::endl;
-					}
+					//if (distance > 0) {
+					//	std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
+					//	std::cout << "Edge cross normal: " << axis[0] << ", " << axis[1] << ", " << axis[2] << std::endl;
+					//	std::cout << "Edge point: " << edgePoint[0] << ", " << edgePoint[1] << ", " << edgePoint[2] << std::endl;
+					//	std::cout << "Edge direction: " << oneModel[i][0] << ", " << oneModel[i][1] << ", " << oneModel[i][2] << std::endl;
+					//	std::cout << "Support point: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << std::endl;
+					//	std::cout << "Distance: " << distance << std::endl;
+					//	std::cout << "Axis dot" << glm::dot(axis, edgePoint - one.m_position) << std::endl << std::endl;
+					//}
 				}
 
 
@@ -253,7 +249,7 @@ namespace {
 				// Clip each edge.
 				for (int j = 0; j < incidentFacePoints.size(); j++) {
 					glm::vec3& currentPoint = incidentFacePoints[j];
-					glm::vec3& nextPoint = incidentFacePoints[(j + 1) % 4];
+					glm::vec3& nextPoint = incidentFacePoints[(j + 1) % incidentFacePoints.size()];
 
 					// If the nextPoint is on the inside.
 					if (glm::dot(nextPoint - clippingPlanePoint, clippingPlaneNormal) < 0.f) {
@@ -302,7 +298,7 @@ namespace {
 				c.contactNormal = referenceFaceNormal;
 				c.contactPoint = projectedPoints[i];
 				c.isVFContact = true;
-				manifold.Points[i] = c;
+				manifold.Points.push_back(c);
 				manifold.PointCount++;
 			}
 			manifold.Normal = referenceFaceNormal;
@@ -334,8 +330,6 @@ namespace {
 		glm::vec3& collisionAxis
 	)
 	{
-		std::cout << "Edge-edge contact occured." << std::endl;
-
 		// Find the closest point on each edge to the other edge.
 		// The line between the closest points will be perpendicular to both edges.
 		glm::vec3 closestDirection = glm::normalize(glm::cross(oneEdgeDirection, twoEdgeDirection));
@@ -359,7 +353,7 @@ namespace {
 		c.edgeTwo = twoEdgeDirection;
 		c.isVFContact = false;
 
-		manifold.Points[0] = c;
+		manifold.Points.push_back(c);
 		manifold.PointCount++;
 	}
 
