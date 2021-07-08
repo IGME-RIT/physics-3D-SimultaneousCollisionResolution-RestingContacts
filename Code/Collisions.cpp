@@ -6,9 +6,12 @@
 #include <iostream>
 
 // If we detect penetration/non-penetration within this threshold, we have a contact.
-#define COLLISION_THRESHOLD 0.001f
+#define COLLISION_THRESHOLD 0.005f
 // Face contacts are usually better, so we apply a bias for it over edge edge contacts.
-#define FACE_COLLISION_BIAS 0.05f
+#define FACE_COLLISION_BIAS 0.1f
+// Every colliding collision applies this coefficient of restitution, which is the amount of energy
+// lost in each collision (1 is no energy lost, 0 is all energy lost).
+#define COEFF_RESTITUTION 0.7f;
 
 namespace Collisions {
 	bool BoundingSphere(const Rigidbody& one, const Rigidbody& two)
@@ -29,17 +32,17 @@ namespace Collisions {
 		unsigned AFaceQueryPenIndex = 0; 
 		float AFaceQueryPen = -FLT_MAX;
 		QueryFaceDirections(one, two, AFaceQueryPen, AFaceQueryPenIndex);
-		if (AFaceQueryPen > 0.f) return;	// separating axis found.
+		if (AFaceQueryPen > COLLISION_THRESHOLD) return;	// separating axis found.
 
 		unsigned BFaceQueryPenIndex = 0;
 		float BFaceQueryPen = -FLT_MAX;
 		QueryFaceDirections(two, one, BFaceQueryPen, BFaceQueryPenIndex);
-		if (BFaceQueryPen > 0.f) return;	// separating axis found.
+		if (BFaceQueryPen > COLLISION_THRESHOLD) return;	// separating axis found.
 
 		float CEdgeQueryPen = -FLT_MAX;
 		glm::vec3 oneEdgeDirection, oneEdgePoint, twoEdgeDirection, twoEdgePoint, collisionAxis;
 		QueryEdgeDirections(one, two, CEdgeQueryPen, oneEdgeDirection, oneEdgePoint, twoEdgeDirection, twoEdgePoint, collisionAxis);
-		if (CEdgeQueryPen > 0.f) return;	// separating axis found.
+		if (CEdgeQueryPen > COLLISION_THRESHOLD) return;	// separating axis found.
 
 		// Hulls must overlap.
 		bool blsFaceContactA = AFaceQueryPen + FACE_COLLISION_BIAS >= CEdgeQueryPen;
@@ -548,11 +551,12 @@ namespace Collisions {
 		// { 2b^TA
 		//       b
 		//     c-b }
+		// We also apply the coefficient of restitution here.
 		gte::GVector<float> double_bTA = 2.f * b * A;
 		for (int i = 0; i < size; i++) {
 			q[i] = double_bTA[i];
-			q[i + size] = b[i];
-			q[i + size * 2] = c[i] - b[i];
+			q[i + size] = b[i] * COEFF_RESTITUTION;
+			q[i + size * 2] = (c[i] - b[i]) * COEFF_RESTITUTION;
 		}
 
 		// Move data from GVectors and GMatrices into std::vectors.

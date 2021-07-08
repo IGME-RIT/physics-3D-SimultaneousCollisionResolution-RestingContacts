@@ -50,7 +50,12 @@ void Rigidbody::AppendInternalForce(glm::vec3 intForce) { m_internalForce += int
 void Rigidbody::AppendInternalTorque(glm::vec3 intTorque) { m_internalTorque += intTorque; }
 
 void Rigidbody::Update(float dt, float t) {
-	
+
+	// Store the last orientation.
+	// We test the new orientation against last, and if they are close enough,
+	// keep the last to promote stability.
+	glm::quat lastOrientation = m_orientation;
+
 	// Precompute values needed for RK4.
 	float halfdt = 0.5f * dt;
 	float sixthdt = dt / 6.0f;
@@ -116,6 +121,12 @@ void Rigidbody::Update(float dt, float t) {
 	// All the state variables should have correct and consistent information.
 	//m_orientation = glm::normalize(m_orientation);
 
+	// Should we use the new orientation. While it's a very small threshold, 
+	// it does good to promote stability, while not affecting most rotations.
+	if (1.f - glm::pow(glm::dot(m_orientation, lastOrientation), 2) < 0.000001f) {
+		m_orientation = lastOrientation;
+	}
+
 	// Update the inertia tensors.
 	m_inertia = m_orientationMatrix * m_bodyInertia * glm::transpose(m_orientationMatrix);
 	m_invInertia = m_orientationMatrix * m_bodyInvInertia * glm::transpose(m_orientationMatrix);
@@ -123,11 +134,6 @@ void Rigidbody::Update(float dt, float t) {
 	// Update external force to correspond to new time t + dt.
 	m_externalForce = m_force(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	m_externalTorque = m_torque(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
-
-
-
-	// Update the entities themselves.
-	Rigidbody::Draw();
 }
 
 void Rigidbody::Draw()
@@ -167,6 +173,11 @@ void Rigidbody::Convert(glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3& R, glm
 	W = R * m_bodyInvInertia * glm::transpose(R) * L; // J(t)^-1 = R(t) * J_body^-1 * R(t)^T
 }
 
+void Rigidbody::SetDamping(float linear, float angular) {
+	m_linearDamping = linear;
+	m_angularDamping = angular;
+}
+
 // Mesh/entity getters.
 // All of these functions are set up to work with rectangular prisms/cuboids, and would need to be adjusted for other polyhedra.
 glm::vec3 Rigidbody::GetAxis(int best) const { 
@@ -182,15 +193,17 @@ const glm::mat4 Rigidbody::GetModelMatrix() const { return m_entity->GetModelMat
 // This support function takes in a WORLD SPACE vector. We convert to local space, use the cuboid
 // support function to find support point in local space, and convert to world space. For generic
 // polyhedra, we would have to loop through the vertices to determine the support point, giving at
-// best O(log n), or a trivial O(n) impelmentation.
+// best O(log n), or a trivial O(n) impelmentation (which is what we have here).
 glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const {
-	// Convert to local space.
-	//v = glm::transpose(m_orientationMatrix) * v;
+	
 	float max = -FLT_MAX;
 	glm::vec3 support;
+	// Look at every vertex of the hull.
 	for (int i = 0; i < 8; i++) {
+		// Get the point in world space.
 		glm::vec3 p = glm::vec3(((i / 4) * 2 - 1) * m_halfwidth.x, (((i % 4) / 2) * 2 - 1) * m_halfwidth.y, ((i % 2) * 2 - 1) * m_halfwidth.z);
 		p = m_position + m_orientation * p;
+
 		if (glm::dot(p, v) > max) {
 			support = p;
 			max = glm::dot(p, v);
@@ -201,25 +214,5 @@ glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const {
 	//std::cout << std::endl;
 	// Convert to world space.
 	return support;
-	
-	//glm::vec3 local = glm::sign(glm::inverse(m_orientation) * (v + glm::vec3(FLT_EPSILON)));
-	//if (glm::dot(-local, v) > glm::dot(local, v))
-	//	local = -local;
-	//return m_position + m_orientation * local * m_halfwidth;
 }	
 
-void Rigidbody::GetSupportAndDistance(const glm::vec3& v, const glm::vec3& p, glm::vec3& supp, float& dist) const
-{
-	// Convert to local space.
-	glm::vec3 vT = glm::transpose(m_orientationMatrix) * v;
-	dist = -FLT_MAX;
-	for (int i = 0; i < 8; i++) {
-		glm::vec3 localPoint = glm::vec3(((i / 4) * 2 - 1) * m_halfwidth.x, (((i % 4) / 2) * 2 - 1) * m_halfwidth.y, ((i % 2) * 2 - 1) * m_halfwidth.z);
-		if (glm::dot(localPoint - p, vT) > dist) {
-			supp = localPoint;
-			dist = glm::dot(localPoint - p, vT);
-		}
-	}
-	// Convert to world space.
-	supp = m_position + m_orientation * supp;
-}

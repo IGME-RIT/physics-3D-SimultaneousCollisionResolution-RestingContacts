@@ -51,8 +51,8 @@ Scene::Scene()
 
 	// Create the enities for the scene.
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 2, 1.1f), glm::vec3(0.5, 1.5, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 2, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(-0.3f, 1, 1.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(-0.0f, 1, 0.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
@@ -71,6 +71,7 @@ Scene::Scene()
 	// Get a time for when the scene starts.
 	timePointSceneStart = std::chrono::steady_clock::now();
 	timePointStartOfThisFrame = timePointSceneStart;
+	timePerFrame = 1.f / frameRate;
 
 }
 
@@ -82,15 +83,52 @@ void Scene::Update()
 	timePointStartOfLastFrame = timePointStartOfThisFrame;
 	timePointStartOfThisFrame = std::chrono::steady_clock::now();
 	UpdateTimer(lastFramesTime, totalRunTime);	// update total run time and dt.
+	std::cout << lastFramesTime << std::endl;
 
-	CheckKeyboardInput();
-	UpdateCamera();
-	UpdateText();
-	if (!isScenePaused) {
-		UpdatePhysics(lastFramesTime, totalRunTime);
+	// The first (or second) time Update is called, there's a CPU bound lag spike
+	// due to some rendering thing. We want to IGNORE that lag spike, as nothing's
+	// actually rendered at that point. We use the boolean to make sure this only
+	// runs due to the first render lag spike, not other lag spikes.
+	if (firstUpdate && lastFramesTime > 0.15f) {
+
+		// Update everything but physics.
+		CheckKeyboardInput();
+		UpdateCamera();
+		UpdateText();
+		for (auto rb : rigidbodies) {
+			rb->Draw();
+		}
+
+		// Set the first update to false and return.
+		firstUpdate = false;
+		return;
 	}
 
-	
+
+
+	// Consume all the render time since last frame.
+	while (lastFramesTime > 0.0f) {
+
+		// Calculate the amount of time to move forward by.
+		float dt = glm::min(timePerFrame, lastFramesTime);
+		
+		
+		// Update the simulation.
+		CheckKeyboardInput();
+		UpdateCamera();
+		UpdateText();
+		if (!isScenePaused) {
+			UpdatePhysics(lastFramesTime, totalRunTime);
+		}
+
+		// Update timers.
+		lastFramesTime -= dt;
+		totalRunTime += dt;
+	}
+
+	for (auto rb : rigidbodies) {
+		rb->Draw();
+	}
 
 }
 
@@ -145,7 +183,7 @@ void Scene::UpdatePhysics(float dt, float t) {
 		// Guarantee no interpenetration by postRelVel >= 0.
 		Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
 		Collisions::Minimize(A, preRelVel, postRelVel, impulseMag);
-		for (int i = 0; i < impulseMag.size(); ++i) impulseMag[i] *= 0.6f;	
+		//for (int i = 0; i < impulseMag.size(); ++i) impulseMag[i] *= 0.6f;	
 		Collisions::DoImpulse(contacts, impulseMag);
 
 		// Guarantee no interpenetration by relAcc >= 0.
@@ -194,8 +232,10 @@ void Scene::UpdateCamera() {
 	// create projection matrix
 	// If this looks confusing, go back to
 	// prepare_uniform_buffers and read those comments
+	//d->projection_matrix = glm::ortho(-(float)d->width/2.f, (float)d->width/2.f, -(float)d->height/2.f, (float)d->height/2.f, 0.0f, 100.0f);
+	//d->projection_matrix = glm::perspective(1.f * 3.14159f / 180.0f, (float)d->width / (float)d->height, 0.1f, 1000.0f);
+	//d->projection_matrix = glm::perspective(90.f, (float)d->width / (float)d->height, 0.1f, 100.0f);
 	d->projection_matrix = glm::perspective(45.0f * 3.14159f / 180.0f, (float)d->width / (float)d->height, 0.1f, 100.0f);
-
 	/* Removed default spinning animation. */
 
 	cameraPosition = { 10.0f * cos(angle), 1.0f, 10.0f * sin(angle) };

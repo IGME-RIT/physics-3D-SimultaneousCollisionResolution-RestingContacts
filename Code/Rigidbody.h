@@ -95,6 +95,11 @@ protected:
 	glm::mat3 m_bodyInertia;
 	glm::mat3 m_bodyInvInertia;
 
+	// Damping variables (1 for no damping, 0 for full damping).
+	float m_linearDamping = 0.6f;
+	float m_angularDamping = 0.6f;
+	void SetDamping(float linear, float angular);
+
 	// Flags for this object (can create bitwise flags if enough show up)
 	bool m_isMovable = true;
 
@@ -104,8 +109,6 @@ public:
 	glm::vec3 GetLocalAxis(int best) const;
 	// Get the support vector of this hull (cuboid) based on input vector.
 	glm::vec3 GetSupport(glm::vec3 v) const;
-	// Workaround to get the proper support, returns the support point and greatest depth.
-	void GetSupportAndDistance(const glm::vec3& v, const glm::vec3& p, glm::vec3& supp, float& dist) const;
 	const glm::mat4 GetModelMatrix() const;
 
 	// Mesh related attributes.

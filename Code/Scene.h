@@ -53,6 +53,13 @@ private:
 	float lastFramesTime = 0;
 	float totalRunTime = 0;
 
+	// First update varibles and functions.
+	bool firstUpdate = true;
+
+	// Frame related variables.
+	float frameRate = 120.f;
+	float timePerFrame;
+
 	// Camera.
 	glm::vec3 cameraPosition;
 	float angle = 0.0f;
