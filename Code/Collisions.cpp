@@ -6,9 +6,9 @@
 #include <iostream>
 
 // If we detect penetration/non-penetration within this threshold, we have a contact.
-#define COLLISION_THRESHOLD 0.001f
+#define COLLISION_THRESHOLD 0.005f
 // Face contacts are usually better, so we apply a bias for it over edge edge contacts.
-#define FACE_COLLISION_BIAS 0.1f
+#define FACE_COLLISION_BIAS 0.15f
 // Every colliding collision applies this coefficient of restitution, which is the amount of energy
 // lost in each collision (1 is no energy lost, 0 is all energy lost).
 #define COEFF_RESTITUTION 0.7f
@@ -670,50 +670,58 @@ namespace Collisions {
 		}
 
 		// Solve as LCP.
+		// In order to fix some issues with stability and clipping, we need to account for the
+		// fact that the LCP solver will not always give a solution.
 		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(size);
+		lcpSolver.SetMaxIterations(size * size * 16);
 		std::shared_ptr<gte::LCPSolver<float>::Result> result = std::make_shared<gte::LCPSolver<float>::Result>();
-	// Goto label.
-	label_lcpsolver:
-		if (lcpSolver.Solve(BVector, AVector, WVector, JVector, result.get())) {
-			// Copy over the impulses to the f vector.
-			std::copy_n(JVector.begin(), size, f.begin());
-		
-			for (int i = 0; i < size; ++i) {
-				if (abs(JVector[i]) > 10) {
-					std::cout << "hmm" << std::endl;
-				}
+
+		// If the LCP solver was unable to get a solution with the given data.
+		if (!lcpSolver.Solve(BVector, AVector, WVector, JVector, result.get())) {
+
+			// If the issues was a convergence one, from my testing it's unlikely that increasing the number of
+			// iterations further would lead to a solution in good time. We perturb the input relative velocities
+			// and try to solve again.
+			if (*result == lcpSolver.FAILED_TO_CONVERGE) {
+					std::cout << "Failed to converge within " << lcpSolver.GetMaxIterations() << " iterations, perturbing data and solving again." << std::endl;
+					for (int i = 0; i < size; ++i) {
+						BVector[i] -= 0.0001f;
+					}
+					// If we still don't have a solution, fill the output vectors with zero.
+					if (!lcpSolver.Solve(BVector, AVector, WVector, JVector)) {
+						std::fill(f.begin(), f.end(), 0);
+						std::fill(dpos.begin(), dpos.end(), 0);
+						return;
+					}
+			}
+			// Either way there's no solution to the LCP.
+			else {
+				if (*result == lcpSolver.INVALID_INPUT)
+					std::cout << "Invalid input" << std::endl;
+				if (*result == lcpSolver.NO_SOLUTION)
+					std::cout << "No solution" << std::endl;
+
+				// There was no solution, return two zero vectors.
+				std::fill(f.begin(), f.end(), 0);
+				std::fill(dpos.begin(), dpos.end(), 0);
+				return;
 			}
 			
-			// Calculate the post velocity (for testing).
-			for (unsigned i = 0; i < size; ++i) {
-				dpos[i] = WVector[i] - COEFF_RESTITUTION * dneg[i];
+		}
+
+		// We have a solution to the LCP.
+		// Copy over the impulses to the f vector.
+		std::copy_n(JVector.begin(), size, f.begin());
+
+		for (int i = 0; i < size; ++i) {
+			if (abs(JVector[i]) > 10) {
+				std::cout << "hmm" << std::endl;
 			}
 		}
-		else {
-			// If the LCPSolver failed to converge within the default amount of iterations, try
-			// again with more iterations.
-			if (*result == lcpSolver.FAILED_TO_CONVERGE) {
-				int currentMax = lcpSolver.GetMaxIterations();
-				if (currentMax >= size * size * 64) {
-					std::cout << "Failed to converge within the upper limit." << std::endl;
-				}
-				else {
-					std::cout << "Failed to converge within " << currentMax << " iterations, retrying with more iterations." << std::endl;
-					lcpSolver.SetMaxIterations(currentMax * 4);
-					// Are goto statements bad practice? Who knows ¯\_(ツ)_/¯
-					// (Dijkstra would say they're bad, but he's dead)
-					goto label_lcpsolver;
-				}
-			}
-				
-			else if (*result == lcpSolver.INVALID_INPUT)
-				std::cout << "Invalid input" << std::endl;
-			else if (*result == lcpSolver.NO_SOLUTION)
-				std::cout << "No solution" << std::endl;
 
-			// There was no solution, return two zero vectors.
-			std::fill(f.begin(), f.end(), 0);
-			std::fill(dpos.begin(), dpos.end(), 0);
+		// Calculate the post velocity (for testing).
+		for (unsigned i = 0; i < size; ++i) {
+			dpos[i] = WVector[i] - COEFF_RESTITUTION * dneg[i];
 		}
 	}
 

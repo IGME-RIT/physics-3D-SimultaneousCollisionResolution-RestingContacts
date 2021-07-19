@@ -6,7 +6,7 @@
 
 // This is the "amount" the update rotation needs to rotate by in order for it to be applied.
 // Any less and it keeps the rotation from the last frame. This is to improve stability.
-#define STABILITY_THRESHOLD 0.0000001f
+#define STABILITY_THRESHOLD 0.00000001f
 
 // Constructor delegation.
 Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable) : Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>>{entity}, isMovable) {}
