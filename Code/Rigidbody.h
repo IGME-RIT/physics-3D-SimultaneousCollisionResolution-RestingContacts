@@ -26,7 +26,8 @@ protected:
 		glm::vec3,	// angular momentum
 		glm::mat3,	// orientation matrix
 		glm::vec3,	// velocity
-		glm::vec3	// angular velocity
+		glm::vec3,	// angular velocity
+		float		// mass
 	);
 
 public:
@@ -81,6 +82,9 @@ public:
 	// We keep track of the next dt to use for this object.
 	float m_dt;
 
+	// Flags for this object (can create bitwise flags if enough show up)
+	bool m_isMovable = true;
+
 // Section for physics related variables.
 protected:
 
@@ -99,9 +103,6 @@ protected:
 	float m_linearDamping = 0.6f;
 	float m_angularDamping = 0.6f;
 	void SetDamping(float linear, float angular);
-
-	// Flags for this object (can create bitwise flags if enough show up)
-	bool m_isMovable = true;
 
 // Section for underlying entities and mesh.
 public:
@@ -139,22 +140,24 @@ struct ForceFunctions
 	//	glm::vec3,	// angular momentum
 	//	glm::mat3,	// orientation matrix
 	//	glm::vec3,	// velocity
-	//	glm::vec3	// angular velocity
+	//	glm::vec3,	// angular velocity
+	//	float		// mass
 	//);
 
-	static glm::vec3 NoForce(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+	static glm::vec3 NoForce(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W, float m) {
 		return glm::vec3(0, 0, 0);
 	}
 
-	static glm::vec3 NoTorque(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+	static glm::vec3 NoTorque(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W, float m) {
 		return glm::vec3(0, 0, 0);
 	}
 
-	static glm::vec3 Gravity(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
-		return glm::vec3(0, -1, 0);
+	static glm::vec3 Gravity(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W, float m) {
+		return glm::vec3(0.f, -m, 0.f);
+		//return glm::vec3(0, -1, 0);
 	}
 
-	static glm::vec3 Clockwise(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W) {
+	static glm::vec3 Clockwise(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W, float m) {
 		return glm::vec3(.01f, 0, 0);
 	}
 };

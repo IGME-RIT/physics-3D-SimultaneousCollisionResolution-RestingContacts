@@ -67,6 +67,11 @@ Scene::Scene()
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers()));
 	rigidbodies[2]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[2]->SetTorqueFunction(ForceFunctions::NoTorque);
+	 
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 3.6f, 0), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[3]->GetEntityPointers()));
+	rigidbodies[3]->SetForceFunction(ForceFunctions::Gravity);
+	rigidbodies[3]->SetTorqueFunction(ForceFunctions::NoTorque);
 
 	// Get a time for when the scene starts.
 	timePointSceneStart = std::chrono::steady_clock::now();
@@ -83,7 +88,7 @@ void Scene::Update()
 	timePointStartOfLastFrame = timePointStartOfThisFrame;
 	timePointStartOfThisFrame = std::chrono::steady_clock::now();
 	UpdateTimer(lastFramesTime, totalRunTime);	// update total run time and dt.
-	std::cout << lastFramesTime << std::endl;
+	//std::cout << lastFramesTime << std::endl;
 
 	// The first (or second) time Update is called, there's a CPU bound lag spike
 	// due to some rendering thing. We want to IGNORE that lag spike, as nothing's
@@ -143,7 +148,7 @@ void Scene::UpdatePhysics(float dt, float t) {
 
 	// Check collisions.
 	for (int i = 0; i < rigidbodies.size(); i++) {
-		for (int j = i + 1; j < rigidbodies.size(); j++) {			
+		for (int j = i + 1; j < rigidbodies.size(); j++) {				
 
 			// If they pass the broad phase collision test, do SAT.
 			if (Collisions::BoundingSphere(*rigidbodies[i].get(), *rigidbodies[j].get())) {
@@ -173,24 +178,39 @@ void Scene::UpdatePhysics(float dt, float t) {
 		std::vector<float> preRelVel, postRelVel, impulseMag; 
 		std::vector<float> restingB, relAcc, restingMag; 
 		preRelVel = postRelVel = impulseMag = restingB = relAcc = restingMag = std::vector<float>(size);
-		//gte::GMatrix<float> A = gte::GMatrix<float>(size, size);
-		//gte::GVector<float> preRelVel, postRelVel, impulseMag = gte::GVector<float>(size);
-		//gte::GVector<float> restingB, relAcc, restingMag = gte::GVector<float>(size);
 
 		// Compute LCP Matrix.
 		Collisions::ComputeLCPMatrix(contacts, A);
+		//Collisions::ComputeAMatrix(contacts, A);
 
 		// Guarantee no interpenetration by postRelVel >= 0.
 		Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
-		Collisions::Minimize(A, preRelVel, postRelVel, impulseMag);
-		//for (int i = 0; i < impulseMag.size(); ++i) impulseMag[i] *= 0.6f;	
+		//Collisions::Minimize(A, preRelVel, postRelVel, impulseMag);
+		Collisions::ComputeImpulseResolution(A, preRelVel, postRelVel, impulseMag);
+		//std::cout << std::endl;
 		Collisions::DoImpulse(contacts, impulseMag);
 
 		// Guarantee no interpenetration by relAcc >= 0.
+		Collisions::ComputeLCPMatrix(contacts, A);
 		Collisions::ComputeRestingContactVector(contacts, restingB);
 		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(size);
-		if(lcpSolver.Solve(A, restingB, relAcc, restingMag));
+		if (lcpSolver.Solve(restingB, A, relAcc, restingMag)) {
+			//for (int i = 0; i < restingB.size(); i++) {
+			//	std::cout << "[" << i << "]: " << restingB[i] << std::endl;
+			//}
+			//std::cout << std::endl;
+			//for (int i = 0; i < relAcc.size(); i++) {
+			//	std::cout << "[" << i << "]: " << relAcc[i] << std::endl;
+			//}
+			//std::cout << std::endl;
+			//for (int i = 0; i < restingMag.size(); ++i) {
+			//	if (restingMag[i] > 100.f || restingMag[i] < -100.f) {
+			//		std::cout << "contact: " << contacts[i].isVFContact << std::endl;
+			//		std::cout << "restingB: " << restingB[i] << std::endl;
+			//	}
+			//}
 			Collisions::DoMotion(t, dt, contacts, restingMag);
+		}
 	}
 	contacts.clear();
 

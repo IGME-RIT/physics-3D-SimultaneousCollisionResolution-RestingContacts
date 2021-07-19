@@ -1,4 +1,4 @@
-
+﻿
 #include "Collisions.h"
 #include "glm/gtx/norm.hpp"	// Some "experimental" math functions (aka I'm too lazy to code square length myself, glm::length2)
 #include "glm/gtx/normalize_dot.hpp" // For fastNormalize.
@@ -6,14 +6,15 @@
 #include <iostream>
 
 // If we detect penetration/non-penetration within this threshold, we have a contact.
-#define COLLISION_THRESHOLD 0.005f
+#define COLLISION_THRESHOLD 0.001f
 // Face contacts are usually better, so we apply a bias for it over edge edge contacts.
 #define FACE_COLLISION_BIAS 0.1f
 // Every colliding collision applies this coefficient of restitution, which is the amount of energy
 // lost in each collision (1 is no energy lost, 0 is all energy lost).
-#define COEFF_RESTITUTION 0.7f;
+#define COEFF_RESTITUTION 0.7f
 
 namespace Collisions {
+
 	bool BoundingSphere(const Rigidbody& one, const Rigidbody& two)
 	{
 		float a = glm::length2(two.m_position - one.m_position);
@@ -22,10 +23,6 @@ namespace Collisions {
 			return false;
 		return true;
 	}
-}
-
-namespace Collisions {
-#pragma region NEW Collision Detection Functions
 
 	void SAT(Rigidbody& one, Rigidbody& two, ContactManifold& manifold)
 	{
@@ -51,20 +48,12 @@ namespace Collisions {
 			CreateFaceContact(manifold, one, AFaceQueryPen, AFaceQueryPenIndex, two, BFaceQueryPen, BFaceQueryPenIndex);
 		else
 			CreateEdgeContact(manifold, one, two, CEdgeQueryPen, oneEdgeDirection, oneEdgePoint, twoEdgeDirection, twoEdgePoint, collisionAxis);
-
 	}
 
-
-
-
-
-
-#pragma endregion NEW Collision Detection Functions
 }
 
 // Helper functions.
 namespace {
-	// FIX THIS
 
 	void QueryFaceDirections(const Rigidbody& one, const Rigidbody& two, float& largestPen, unsigned& largestPenIndex) {
 		for (int index = 0; index < 6; ++index) {
@@ -85,7 +74,7 @@ namespace {
 			distance = glm::dot(vertexB - planeCenterA, planeNormalA);
 
 			// Debugging information.
-			//if (distance > 0.0f) {
+			//if (distance > 0.0f && one.m_halfwidth[2] == 2) {
 			//	std::cout << "Object center: " << one.m_position[0] << ", " << one.m_position[1] << ", " << one.m_position[2] << std::endl;
 			//	std::cout << "Plane normal: " << planeNormalA[0] << ", " << planeNormalA[1] << ", " << planeNormalA[2] << std::endl;
 			//	std::cout << "Plane center: " << planeCenterA[0] << ", " << planeCenterA[1] << ", " << planeCenterA[2] << std::endl;
@@ -284,11 +273,12 @@ namespace {
 			
 			// Once we have our set of points, move the set of contact points to the reference face.
 			std::vector<glm::vec3> projectedPoints;
-			glm::vec3 referencePlanePoint = referenceBody.m_position + (referenceFaceNormal * referenceBody.m_halfwidth);
-			for (glm::vec3 point : incidentFacePoints) {
-				// projPoint = p - (DOT(p-a, n) / DOT(n, n)) * n
-				projectedPoints.push_back(point - glm::dot(point - referencePlanePoint, referenceFaceNormal) / glm::length2(referenceFaceNormal) * referenceFaceNormal);
-			}
+			projectedPoints = incidentFacePoints;
+			//glm::vec3 referencePlanePoint = referenceBody.m_position + (referenceFaceNormal * referenceBody.m_halfwidth);
+			//for (glm::vec3 point : incidentFacePoints) {
+			//	// projPoint = p - (DOT(p-a, n) / DOT(n, n)) * n
+			//	projectedPoints.push_back(point - glm::dot(point - referencePlanePoint, referenceFaceNormal) / glm::length2(referenceFaceNormal) * referenceFaceNormal);
+			//}
 
 			// If we have more than four contact points, reduce to four.
 
@@ -360,6 +350,7 @@ namespace {
 		manifold.PointCount++;
 	}
 
+
 }	// End of empty namespace.
 
 
@@ -423,7 +414,6 @@ namespace Collisions {
 			glm::vec3 velB = ci.bodyTwo->m_velocity + glm::cross(ci.bodyTwo->m_angularVelocity, rBi);
 			ddot[i] = glm::dot(ci.contactNormal, velA - velB);
 		}
-
 	}
 
 	void ComputeRestingContactVector(const std::vector<Collisions::Contact>& contacts, std::vector<float>& b)
@@ -463,6 +453,11 @@ namespace Collisions {
 
 			// Compute b vector element.
 			b[i] = glm::dot(ci.contactNormal, At1 + At2 + At3 - Bt1 - Bt2 - Bt3) + (2.f * glm::dot(Ndot, At4 - Bt4));
+
+			//if (b[i] > -0.00001 && b[i] < 0.00001) {
+			//	std::cout << "wow" << std::endl;
+			//}
+			//std::cout << b[i] << std::endl;
 		}
 	}
 
@@ -475,16 +470,20 @@ namespace Collisions {
 
 			// Update momentum.
 			glm::vec3 impulse = f[i] * ci.contactNormal;
-			A->m_momentum += impulse;
-			B->m_momentum -= impulse;
-			A->m_angularMomentum += glm::cross(ci.contactPoint - A->m_position, impulse);
-			B->m_angularMomentum -= glm::cross(ci.contactPoint - B->m_position, impulse);
+			if (A->m_isMovable) {
+				A->m_momentum += impulse;
+				A->m_angularMomentum += glm::cross(ci.contactPoint - A->m_position, impulse);
+				A->m_velocity = A->m_invMass * A->m_momentum;
+				A->m_angularVelocity = A->m_invInertia * A->m_angularMomentum;
+			}
+			if (B->m_isMovable) {
+				B->m_momentum -= impulse;
+				B->m_angularMomentum -= glm::cross(ci.contactPoint - B->m_position, impulse);
+				B->m_velocity = B->m_invMass * B->m_momentum;
+				B->m_angularVelocity = B->m_invInertia * B->m_angularMomentum;
+			}
+			
 
-			// Update velocity.
-			A->m_velocity = A->m_invMass * A->m_momentum;
-			B->m_velocity = B->m_invMass * B->m_momentum;
-			A->m_angularVelocity = A->m_invInertia * A->m_angularMomentum;
-			B->m_angularVelocity = B->m_invInertia * B->m_angularMomentum;
 		}
 	}
 
@@ -518,10 +517,13 @@ namespace Collisions {
 		for (int i = 0; i < size; i++) {
 			if (dneg[i] >= 0.f)
 				b[i] = 0.f;
-			else
-				b[i] = 2.f * dneg[i];
+			else {
+				//b[i] = 2.f * dneg[i];
+				b[i] = (1.f + COEFF_RESTITUTION) * dneg[i];
+			}
+				
 
-			c[i] = abs(dneg[i]);
+			c[i] = abs(dneg[i] * COEFF_RESTITUTION);
 		}
 
 		// Create a matrix for A.
@@ -555,8 +557,8 @@ namespace Collisions {
 		gte::GVector<float> double_bTA = 2.f * b * A;
 		for (int i = 0; i < size; i++) {
 			q[i] = double_bTA[i];
-			q[i + size] = b[i] * COEFF_RESTITUTION;
-			q[i + size * 2] = (c[i] - b[i]) * COEFF_RESTITUTION;
+			q[i + size] = b[i];// *COEFF_RESTITUTION;
+			q[i + size * 2] = (c[i] - b[i]);// *COEFF_RESTITUTION;
 		}
 
 		// Move data from GVectors and GMatrices into std::vectors.
@@ -594,8 +596,135 @@ namespace Collisions {
 		}
 	}
 
-
 #pragma endregion Resting Contacts Collision Resolution Functions
 
+	void ComputeAMatrix(const std::vector<Collisions::Contact>& contacts, std::vector<float>& lcpMatrix)
+	{
+		// http://www.tara.tcd.ie/bitstream/handle/2262/18699/GiangEgirl03.pdf?sequence=1&isAllowed=y
+		int size = contacts.size();
+		for (int i = 0; i < size; ++i) {
+
+			// Precompute information about both rigidbodies.
+			const Collisions::Contact* ci = &contacts[i];
+			const Rigidbody* Ai = ci->bodyOne;
+			const Rigidbody* Bi = ci->bodyTwo;
+			
+			glm::vec3 rAi = ci->contactPoint - Ai->m_position;
+			glm::vec3 rBi = ci->contactPoint - Bi->m_position;
+			glm::mat3 lambdaAi = glm::transpose(DualMatrix(rAi)) * Ai->m_invInertia;
+			glm::mat3 lambdaBi = glm::transpose(DualMatrix(rBi)) * Bi->m_invInertia;
+
+			for (int j = 0; j < size; ++j) {
+
+				const Collisions::Contact* cj = &contacts[j];
+				const Rigidbody* Aj = ci->bodyOne;
+				const Rigidbody* Bj = ci->bodyTwo;
+				float& A_ij = lcpMatrix[i * size + j];
+				
+				A_ij = 0.f;
+				if (Ai == Aj) {
+					glm::vec3 rAj = cj->contactPoint - Aj->m_position;
+					glm::vec3 AAij = (cj->contactNormal * Ai->m_invMass) + lambdaAi * (DualMatrix(rAj) * cj->contactNormal);
+					A_ij += glm::dot(contacts[i].contactNormal, AAij);
+				}
+				else if (Ai == Bj) {
+					glm::vec3 rAj = cj->contactPoint - Aj->m_position;
+					glm::vec3 AAij = (cj->contactNormal * Ai->m_invMass) + lambdaAi * (DualMatrix(rAj) * cj->contactNormal);
+					A_ij -= glm::dot(contacts[j].contactNormal, AAij);
+				}
+
+				if (Bi == Aj) {
+					glm::vec3 rBj = cj->contactPoint - Bj->m_position;
+					glm::vec3 ABij = (-cj->contactNormal * Bi->m_invMass) + lambdaBi * (DualMatrix(rBj) * -cj->contactNormal);
+					A_ij += glm::dot(contacts[j].contactNormal, ABij);
+				}
+				else if (Bi == Bj) {
+					glm::vec3 rBj = cj->contactPoint - Bj->m_position;
+					glm::vec3 ABij = (-cj->contactNormal * Bi->m_invMass) + lambdaBi * (DualMatrix(rBj) * -cj->contactNormal);
+					A_ij -= glm::dot(contacts[i].contactNormal, ABij);
+				}
+
+				//glm::vec3 rAj = cj->contactPoint - Aj->m_position;
+				//glm::vec3 rBj = cj->contactPoint - Bj->m_position;
+				//
+				//glm::vec3 AAij = (cj->contactNormal * Ai->m_invMass) + lambdaAi * (DualMatrix(rAj) * cj->contactNormal);
+				//glm::vec3 ABij = (-cj->contactNormal * Bi->m_invMass) + lambdaBi * (DualMatrix(rBj) * -cj->contactNormal);
+				//lcpMatrix[i * size + j] = glm::dot(contacts[i].contactNormal, AAij - ABij);
+			}
+		}
+	}
+
+	void ComputeImpulseResolution(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f)
+	{
+		// Setup.
+		float size = dneg.size();
+		std::vector<float> AVector, BVector, JVector, WVector;
+		BVector = JVector = WVector = std::vector<float>(size);
+
+		// We already have the AVector.
+		AVector = A;
+
+		// Calculate the BVector from dneg.
+		for (unsigned i = 0; i < size; ++i) {
+			BVector[i] = (1.f + COEFF_RESTITUTION) * dneg[i];
+		}
+
+		// Solve as LCP.
+		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(size);
+		std::shared_ptr<gte::LCPSolver<float>::Result> result = std::make_shared<gte::LCPSolver<float>::Result>();
+	// Goto label.
+	label_lcpsolver:
+		if (lcpSolver.Solve(BVector, AVector, WVector, JVector, result.get())) {
+			// Copy over the impulses to the f vector.
+			std::copy_n(JVector.begin(), size, f.begin());
+		
+			for (int i = 0; i < size; ++i) {
+				if (abs(JVector[i]) > 10) {
+					std::cout << "hmm" << std::endl;
+				}
+			}
+			
+			// Calculate the post velocity (for testing).
+			for (unsigned i = 0; i < size; ++i) {
+				dpos[i] = WVector[i] - COEFF_RESTITUTION * dneg[i];
+			}
+		}
+		else {
+			// If the LCPSolver failed to converge within the default amount of iterations, try
+			// again with more iterations.
+			if (*result == lcpSolver.FAILED_TO_CONVERGE) {
+				int currentMax = lcpSolver.GetMaxIterations();
+				if (currentMax >= size * size * 64) {
+					std::cout << "Failed to converge within the upper limit." << std::endl;
+				}
+				else {
+					std::cout << "Failed to converge within " << currentMax << " iterations, retrying with more iterations." << std::endl;
+					lcpSolver.SetMaxIterations(currentMax * 4);
+					// Are goto statements bad practice? Who knows ¯\_(ツ)_/¯
+					// (Dijkstra would say they're bad, but he's dead)
+					goto label_lcpsolver;
+				}
+			}
+				
+			else if (*result == lcpSolver.INVALID_INPUT)
+				std::cout << "Invalid input" << std::endl;
+			else if (*result == lcpSolver.NO_SOLUTION)
+				std::cout << "No solution" << std::endl;
+
+			// There was no solution, return two zero vectors.
+			std::fill(f.begin(), f.end(), 0);
+			std::fill(dpos.begin(), dpos.end(), 0);
+		}
+	}
+
+
+
+}
+
+namespace {
+	glm::mat3 DualMatrix(const glm::vec3& v)
+	{
+		return glm::mat3(0.f, v[2], -v[1], -v[2], 0.f, v[0], v[1], -v[0], 0.f);
+	}
 }
 

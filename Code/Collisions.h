@@ -28,7 +28,6 @@ namespace Collisions {
 		Rigidbody* bodyTwo = nullptr;
 		glm::vec3 contactPoint = glm::vec3(0);
 		glm::vec3 contactNormal = glm::vec3(0);
-		float penetrationDepth = 0.f;
 		glm::vec3 edgeOne = glm::vec3(0);
 		glm::vec3 edgeTwo = glm::vec3(0);
 		// Is it a vertex-face contact (true) or edge edge contact (false).
@@ -141,4 +140,20 @@ namespace Collisions {
 	void Minimize(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f);
 
 #pragma endregion Collision Resolution Functions
+
+	// We use a different set of functions for colliding contacts.
+	// https://www.scss.tcd.ie/~manzkem/CS7057/cs7057-1516-10-MultipleContacts-mm.pdf
+#pragma region New Collision Resolution Functions
+
+	void ComputeAMatrix(const std::vector<Collisions::Contact>& contacts, std::vector<float>& lcpMatrix);
+
+	void ComputeImpulseResolution(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f);
+
+#pragma endregion New Collision Resolution Functions
+}
+
+namespace {
+	// Function that calculates the dual of a vector according to:
+	// https://hal.archives-ouvertes.fr/hal-01968730/document, page 8.
+	glm::mat3 DualMatrix(const glm::vec3& v);
 }

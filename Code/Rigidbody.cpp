@@ -4,6 +4,10 @@
 #include <iostream>
 #include <glm/gtc/type_ptr.hpp> // Used for glm::make_vec3, which converts from float* to glm::vec3.
 
+// This is the "amount" the update rotation needs to rotate by in order for it to be applied.
+// Any less and it keeps the rotation from the last frame. This is to improve stability.
+#define STABILITY_THRESHOLD 0.0000001f
+
 // Constructor delegation.
 Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable) : Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>>{entity}, isMovable) {}
 
@@ -51,10 +55,20 @@ void Rigidbody::AppendInternalTorque(glm::vec3 intTorque) { m_internalTorque += 
 
 void Rigidbody::Update(float dt, float t) {
 
+
+	if (m_isMovable == false) {
+		return;
+	}
+
 	// Store the last orientation.
 	// We test the new orientation against last, and if they are close enough,
 	// keep the last to promote stability.
 	glm::quat lastOrientation = m_orientation;
+
+	//if (m_halfwidth[0] == 0.7f) {
+	//	//std::cout << m_internalForce[0] << ", " << m_internalForce[1] << ", " << m_internalForce[2] << std::endl;
+	//	std::cout << "Toruqe: " << m_internalTorque[0] << ", " << m_internalTorque[1] << ", " << m_internalTorque[2] << std::endl;
+	//}
 
 	// Precompute values needed for RK4.
 	float halfdt = 0.5f * dt;
@@ -77,8 +91,7 @@ void Rigidbody::Update(float dt, float t) {
 	//glm::vec3 A1DLDT = m_torque(t, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	glm::vec3 A1DPDT = m_externalForce + m_internalForce;
 	glm::vec3 A1DLDT = m_externalTorque + m_internalTorque;
-	m_internalForce = glm::vec3(0);
-	m_internalTorque = glm::vec3(0);
+
 	// Calculate the RK4 value for first step.
 	XN = m_position + halfdt * A1DXDT;
 	QN = m_orientation + halfdt * A1DQDT;
@@ -89,8 +102,10 @@ void Rigidbody::Update(float dt, float t) {
 	// A2 = G(t + dt / 2, B1), B2 = S0 + (dt / 2) * A2
 	glm::vec3 A2DXDT = VN;
 	glm::quat A2DQDT = 0.5f * glm::quat(0, WN) * QN;
-	glm::vec3 A2DPDT = m_force(tphalfdt, XN, QN, PN, LN, RN, VN, WN);
-	glm::vec3 A2DLDT = m_torque(tphalfdt, XN, QN, PN, LN, RN, VN, WN);
+	glm::vec3 A2DPDT = m_externalForce + m_internalForce;
+	glm::vec3 A2DLDT = m_externalTorque + m_internalTorque;
+	//glm::vec3 A2DPDT = m_force(tphalfdt, XN, QN, PN, LN, RN, VN, WN, m_mass);
+	//glm::vec3 A2DLDT = m_torque(tphalfdt, XN, QN, PN, LN, RN, VN, WN, m_mass);
 	XN = m_position + halfdt * A2DXDT;
 	QN = m_orientation + halfdt * A2DQDT;
 	PN = m_momentum + halfdt * A2DPDT;
@@ -100,8 +115,10 @@ void Rigidbody::Update(float dt, float t) {
 	// A3 = G(t + dt / 2,B2), B3 = S0 + dt * A3
 	glm::vec3 A3DXDT = VN;
 	glm::quat A3DQDT = 0.5f * glm::quat(0, WN) * QN;
-	glm::vec3 A3DPDT = m_force(tphalfdt, XN, QN, PN, LN, RN, VN, WN);
-	glm::vec3 A3DLDT = m_torque(tphalfdt, XN, QN, PN, LN, RN, VN, WN);
+	glm::vec3 A3DPDT = m_externalForce + m_internalForce;
+	glm::vec3 A3DLDT = m_externalTorque + m_internalTorque;
+	//glm::vec3 A3DPDT = m_force(tphalfdt, XN, QN, PN, LN, RN, VN, WN, m_mass);
+	//glm::vec3 A3DLDT = m_torque(tphalfdt, XN, QN, PN, LN, RN, VN, WN, m_mass);
 	XN = m_position + dt * A3DXDT;
 	QN = m_orientation + dt * A3DQDT;
 	PN = m_momentum + dt * A3DPDT;
@@ -111,8 +128,10 @@ void Rigidbody::Update(float dt, float t) {
 	// A4 = G(t + dt,B3), S1 = S0 + (dt / 6) * (A1 + 2 * A2 + 2 * A3 + A4)
 	glm::vec3 A4DXDT = VN;
 	glm::quat A4DQDT = 0.5f * glm::quat(0, WN) * QN;
-	glm::vec3 A4DPDT = m_force(tpdt, XN, QN, PN, LN, RN, VN, WN);
-	glm::vec3 A4DLDT = m_torque(tpdt, XN, QN, PN, LN, RN, VN, WN);
+	glm::vec3 A4DPDT = m_externalForce + m_internalForce;
+	glm::vec3 A4DLDT = m_externalTorque + m_internalTorque;;
+	// glm::vec3 A4DPDT = m_force(tpdt, XN, QN, PN, LN, RN, VN, WN, m_mass);
+	// glm::vec3 A4DLDT = m_torque(tpdt, XN, QN, PN, LN, RN, VN, WN, m_mass);
 	m_position += sixthdt * (A1DXDT + 2.0f * (A2DXDT + A3DXDT) + A4DXDT);
 	m_orientation += sixthdt * (A1DQDT + 2.0f * (A2DQDT + A3DQDT) + A4DQDT);
 	m_momentum += sixthdt * (A1DPDT + 2.0f * (A2DPDT + A3DPDT) + A4DPDT);
@@ -123,7 +142,10 @@ void Rigidbody::Update(float dt, float t) {
 
 	// Should we use the new orientation. While it's a very small threshold, 
 	// it does good to promote stability, while not affecting most rotations.
-	if (1.f - glm::pow(glm::dot(m_orientation, lastOrientation), 2) < 0.000001f) {
+
+	float movement = 1.f - glm::pow(glm::dot(m_orientation, lastOrientation), 2);
+	//std::cout << movement << std::endl;
+	if (movement < STABILITY_THRESHOLD) {
 		m_orientation = lastOrientation;
 	}
 
@@ -132,8 +154,17 @@ void Rigidbody::Update(float dt, float t) {
 	m_invInertia = m_orientationMatrix * m_bodyInvInertia * glm::transpose(m_orientationMatrix);
 
 	// Update external force to correspond to new time t + dt.
-	m_externalForce = m_force(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
-	m_externalTorque = m_torque(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
+	m_externalForce = m_force(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity, m_mass);
+	m_externalTorque = m_torque(tpdt, m_position, m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity, m_mass);
+
+	// Zero out internal forces.
+	m_internalForce = glm::vec3(0);
+	m_internalTorque = glm::vec3(0);
+	
+	// Debugging
+
+	//std::cout << "(" << m_orientation[0] << ", " << m_orientation[1] << ", " << m_orientation[2] << ", " << m_orientation[3] << ")" << std::endl;
+
 }
 
 void Rigidbody::Draw()
