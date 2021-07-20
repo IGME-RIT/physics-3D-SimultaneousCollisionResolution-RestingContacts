@@ -51,14 +51,14 @@ Scene::Scene()
 
 	// Create the enities for the scene.
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 2, 1.1f), glm::vec3(0.5, 1.5, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(-0.0f, 1, 0.f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
 
 	// Static one.
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -1, 0.0f), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -1, 0), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), false));
 	rigidbodies[1]->SetForceFunction(ForceFunctions::NoForce);
 	rigidbodies[1]->SetTorqueFunction(ForceFunctions::NoTorque);
@@ -143,7 +143,7 @@ void Scene::UpdatePhysics(float dt, float t) {
 	// Set each rigidbody to update dt time (can be changed by collision detection).
 	for (int i = 0; i < rigidbodies.size(); i++) {
 		rigidbodies[i]->m_dt = dt;
-		cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
+		//cuboids[i]->wireEntity->color = glm::vec3(0, 1, 0);
 	}
 
 	// Check collisions.
@@ -158,10 +158,10 @@ void Scene::UpdatePhysics(float dt, float t) {
 				Collisions::SAT(*rigidbodies[i].get(), *rigidbodies[j].get(), *manifold.get());
 
 				// If there's a collision, change the colors of the rigidbody outlines.
-				if (manifold->PointCount > 0) {
-					cuboids[i]->wireEntity->color = glm::vec3(1, 0, 0);
-					cuboids[j]->wireEntity->color = glm::vec3(1, 0, 0);
-				}
+				//if (manifold->PointCount > 0) {
+				//	cuboids[i]->wireEntity->color = glm::vec3(1, 0, 0);
+				//	cuboids[j]->wireEntity->color = glm::vec3(1, 0, 0);
+				//}
 				
 				// Add collision data to array.
 				for (int i = 0; i < manifold->PointCount; i++) {

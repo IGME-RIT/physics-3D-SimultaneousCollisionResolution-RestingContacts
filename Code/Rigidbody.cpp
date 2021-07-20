@@ -6,7 +6,7 @@
 
 // This is the "amount" the update rotation needs to rotate by in order for it to be applied.
 // Any less and it keeps the rotation from the last frame. This is to improve stability.
-#define STABILITY_THRESHOLD 0.00000001f
+#define STABILITY_THRESHOLD 0.000007f
 
 // Constructor delegation.
 Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable) : Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>>{entity}, isMovable) {}
@@ -60,10 +60,6 @@ void Rigidbody::Update(float dt, float t) {
 		return;
 	}
 
-	// Store the last orientation.
-	// We test the new orientation against last, and if they are close enough,
-	// keep the last to promote stability.
-	glm::quat lastOrientation = m_orientation;
 
 	//if (m_halfwidth[0] == 0.7f) {
 	//	//std::cout << m_internalForce[0] << ", " << m_internalForce[1] << ", " << m_internalForce[2] << std::endl;
@@ -140,13 +136,13 @@ void Rigidbody::Update(float dt, float t) {
 	// All the state variables should have correct and consistent information.
 	//m_orientation = glm::normalize(m_orientation);
 
-	// Should we use the new orientation. While it's a very small threshold, 
-	// it does good to promote stability, while not affecting most rotations.
-
-	float movement = 1.f - glm::pow(glm::dot(m_orientation, lastOrientation), 2);
+	// If the new orientation is very close to the identity quaternion, use the identity.
+	// It does good to promote stability, while not affecting most rotations.
+	float movement = 1.f - glm::pow(glm::dot(m_orientation, glm::quat()), 2);
 	//std::cout << movement << std::endl;
 	if (movement < STABILITY_THRESHOLD) {
-		m_orientation = lastOrientation;
+		m_orientation = glm::quat();
+		Convert(m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	}
 
 	// Update the inertia tensors.

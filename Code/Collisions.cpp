@@ -685,7 +685,8 @@ namespace Collisions {
 			if (*result == lcpSolver.FAILED_TO_CONVERGE) {
 					std::cout << "Failed to converge within " << lcpSolver.GetMaxIterations() << " iterations, perturbing data and solving again." << std::endl;
 					for (int i = 0; i < size; ++i) {
-						BVector[i] -= 0.0001f;
+						if (BVector[i] != 0.0f)
+							BVector[i] -= 0.000001f;
 					}
 					// If we still don't have a solution, fill the output vectors with zero.
 					if (!lcpSolver.Solve(BVector, AVector, WVector, JVector)) {
