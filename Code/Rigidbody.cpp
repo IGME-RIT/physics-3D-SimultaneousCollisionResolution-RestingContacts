@@ -29,7 +29,7 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	m_radius = glm::length(m_halfwidth);
 
 	// Assume that we dealing with cuboids.
-	m_mass = 1;
+	m_mass = (m_halfwidth.x * m_halfwidth.y) * (m_halfwidth.z * 8.f);
 	if (isMovable == false) {
 		m_mass = 1000000;
 	}

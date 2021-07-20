@@ -50,9 +50,9 @@ Scene::Scene()
 	skyEntity->CreateDescriptorSetBasic();
 
 	// Create the enities for the scene.
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 2, 1.1f), glm::vec3(0.5, 1.5, 2), glm::vec3(1, 1, 1)));
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 1.1f), glm::vec3(0.5, 0.7, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
