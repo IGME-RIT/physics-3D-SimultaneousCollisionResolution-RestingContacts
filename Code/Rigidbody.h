@@ -1,5 +1,11 @@
 #pragma once
 
+// The rigidbody class is used to represent a physics object. Logic mostly from 
+// David Eberly's book, "Game Physics, 2nd edition". Each rigidbody can store any
+// amount of entities; the first entity will be considered the primary, and all
+// the secondary entities will be moved the same as the primary.
+//
+// Written by Chris Hambacher, 2021.
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -11,8 +17,7 @@
 
 
 
-// A class to represent a physics object.
-// Logic mostly from David Eberly's book, "Game Physics"
+
 class Rigidbody
 {
 protected:

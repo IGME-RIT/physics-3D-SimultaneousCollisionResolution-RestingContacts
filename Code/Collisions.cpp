@@ -448,6 +448,7 @@ namespace Collisions {
 				glm::vec3 EdgeOnedot = glm::cross(A->m_angularVelocity, ci.edgeOne);
 				glm::vec3 EdgeTwodot = glm::cross(B->m_angularVelocity, ci.edgeTwo);
 				glm::vec3 U = glm::cross(ci.edgeOne, EdgeTwodot) + glm::cross(EdgeOnedot, ci.edgeTwo);
+				// The division here doesn't exactly match the book, due to an error in the book.
 				Ndot = (U - glm::dot(U, ci.contactNormal) * ci.contactNormal) / glm::length(glm::cross(ci.edgeOne, ci.edgeTwo));
 			}
 
@@ -503,6 +504,7 @@ namespace Collisions {
 		//}
 	}
 
+	// Fuction is currently unused
 	void Minimize(const std::vector<float>& Avector, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f)
 	{
 		// Our general matrix size. We will be using 3 times this for most matrices (due to two conditions).
@@ -596,64 +598,6 @@ namespace Collisions {
 		}
 	}
 
-#pragma endregion Resting Contacts Collision Resolution Functions
-
-	void ComputeAMatrix(const std::vector<Collisions::Contact>& contacts, std::vector<float>& lcpMatrix)
-	{
-		// http://www.tara.tcd.ie/bitstream/handle/2262/18699/GiangEgirl03.pdf?sequence=1&isAllowed=y
-		int size = contacts.size();
-		for (int i = 0; i < size; ++i) {
-
-			// Precompute information about both rigidbodies.
-			const Collisions::Contact* ci = &contacts[i];
-			const Rigidbody* Ai = ci->bodyOne;
-			const Rigidbody* Bi = ci->bodyTwo;
-			
-			glm::vec3 rAi = ci->contactPoint - Ai->m_position;
-			glm::vec3 rBi = ci->contactPoint - Bi->m_position;
-			glm::mat3 lambdaAi = glm::transpose(DualMatrix(rAi)) * Ai->m_invInertia;
-			glm::mat3 lambdaBi = glm::transpose(DualMatrix(rBi)) * Bi->m_invInertia;
-
-			for (int j = 0; j < size; ++j) {
-
-				const Collisions::Contact* cj = &contacts[j];
-				const Rigidbody* Aj = ci->bodyOne;
-				const Rigidbody* Bj = ci->bodyTwo;
-				float& A_ij = lcpMatrix[i * size + j];
-				
-				A_ij = 0.f;
-				if (Ai == Aj) {
-					glm::vec3 rAj = cj->contactPoint - Aj->m_position;
-					glm::vec3 AAij = (cj->contactNormal * Ai->m_invMass) + lambdaAi * (DualMatrix(rAj) * cj->contactNormal);
-					A_ij += glm::dot(contacts[i].contactNormal, AAij);
-				}
-				else if (Ai == Bj) {
-					glm::vec3 rAj = cj->contactPoint - Aj->m_position;
-					glm::vec3 AAij = (cj->contactNormal * Ai->m_invMass) + lambdaAi * (DualMatrix(rAj) * cj->contactNormal);
-					A_ij -= glm::dot(contacts[j].contactNormal, AAij);
-				}
-
-				if (Bi == Aj) {
-					glm::vec3 rBj = cj->contactPoint - Bj->m_position;
-					glm::vec3 ABij = (-cj->contactNormal * Bi->m_invMass) + lambdaBi * (DualMatrix(rBj) * -cj->contactNormal);
-					A_ij += glm::dot(contacts[j].contactNormal, ABij);
-				}
-				else if (Bi == Bj) {
-					glm::vec3 rBj = cj->contactPoint - Bj->m_position;
-					glm::vec3 ABij = (-cj->contactNormal * Bi->m_invMass) + lambdaBi * (DualMatrix(rBj) * -cj->contactNormal);
-					A_ij -= glm::dot(contacts[i].contactNormal, ABij);
-				}
-
-				//glm::vec3 rAj = cj->contactPoint - Aj->m_position;
-				//glm::vec3 rBj = cj->contactPoint - Bj->m_position;
-				//
-				//glm::vec3 AAij = (cj->contactNormal * Ai->m_invMass) + lambdaAi * (DualMatrix(rAj) * cj->contactNormal);
-				//glm::vec3 ABij = (-cj->contactNormal * Bi->m_invMass) + lambdaBi * (DualMatrix(rBj) * -cj->contactNormal);
-				//lcpMatrix[i * size + j] = glm::dot(contacts[i].contactNormal, AAij - ABij);
-			}
-		}
-	}
-
 	void ComputeImpulseResolution(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f)
 	{
 		// Setup.
@@ -726,14 +670,7 @@ namespace Collisions {
 		}
 	}
 
+#pragma endregion Resting Contacts Collision Resolution Functions
 
-
-}
-
-namespace {
-	glm::mat3 DualMatrix(const glm::vec3& v)
-	{
-		return glm::mat3(0.f, v[2], -v[1], -v[2], 0.f, v[0], v[1], -v[0], 0.f);
-	}
 }
 

@@ -22,6 +22,21 @@ graphics, he is working on a Wii U emulator
 that utilizes Vulkan, see more at http://cemu.info
 */
 
+// Some notes on this system:
+//
+// The code of the physics portion of this system is not optimized. It
+// shouldn't be too hard to get it running much faster, but there's also
+// an upper limit. More colliding rigidbodies in the scene causes the run
+// time to increase quadratically. 
+//
+// Rigidbodies may clip into each other for a frame. This can be removed
+// by checking if rigidbodies WILL collide in the next frame, and then
+// stepping those rigidbodies by a different timestep than the rest of the
+// scene such that they barely collide in the next frame, as opposed to 
+// heavily colliding.
+// 
+// Written by Chris Hambacher, 2021.
+
 #pragma once
 #include "Demo.h"
 #include "Shape.h"

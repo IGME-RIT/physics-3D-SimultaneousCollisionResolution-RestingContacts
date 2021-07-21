@@ -1,11 +1,15 @@
 #pragma once
 
-// Collision Manager is in charge of checking collisions between objects.
-// It takes in Rigidbodies as inputs.
-// Most of the code/logic is taken from the book 
-// Game Physics Engine Development, 2nd Edition by Ian Millington.
-// The repo for that book is here: https://github.com/idmillington/cyclone-physics
-//
+// Collisions namespace has functions to detect collisions and to resolve them
+// using simultaneous collision resolution. It takes in Rigidbodies as inputs.
+// Most of the collision resolution code is taken from the book Game Physics, 
+// 2nd Edition by David Eberly, chapter 6.6.4. One function that was not
+// from the book was the ComputeImpulseResolution function, which replaced the
+// Minimize function from the textbook. This solves the colliding contacts as
+// a normal LCP as opposed to a CQPP converted to an LCP. The contact manifold SAT
+// collision detection code is based on a GDC2015 talk by Dirk Gregarious, the 
+// link to which can be found below in the code.
+// 
 // Written by Chris Hambacher, 2021.
 
 #include "Rigidbody.h"
@@ -137,23 +141,13 @@ namespace Collisions {
 	void DoMotion(double t, double dt, const std::vector<Collisions::Contact>& contacts, std::vector<float> g);
 
 	// Minimize |A * f + b|^2. Generate LCP problem from inputs A and dneg, output dpos and f vectors.
+	// Function has currently been replaced by the ComputeImpulseResolution to properly use collision restitution.
 	void Minimize(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f);
 
-#pragma endregion Collision Resolution Functions
-
-	// We use a different set of functions for colliding contacts.
+	// We use a different functions for colliding contacts.
 	// https://www.scss.tcd.ie/~manzkem/CS7057/cs7057-1516-10-MultipleContacts-mm.pdf
-#pragma region New Collision Resolution Functions
-
-	void ComputeAMatrix(const std::vector<Collisions::Contact>& contacts, std::vector<float>& lcpMatrix);
-
 	void ComputeImpulseResolution(const std::vector<float>& A, const std::vector<float>& dneg, std::vector<float>& dpos, std::vector<float>& f);
 
-#pragma endregion New Collision Resolution Functions
+#pragma endregion Collision Resolution Functions
 }
 
-namespace {
-	// Function that calculates the dual of a vector according to:
-	// https://hal.archives-ouvertes.fr/hal-01968730/document, page 8.
-	glm::mat3 DualMatrix(const glm::vec3& v);
-}

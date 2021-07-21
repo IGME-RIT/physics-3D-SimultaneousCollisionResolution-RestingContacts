@@ -50,9 +50,11 @@ Scene::Scene()
 	skyEntity->CreateDescriptorSetBasic();
 
 	// Create the enities for the scene.
+	// The cuboid constructor is position, halfwidth, and color.
+
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 1.1f), glm::vec3(0.5, 0.7, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
@@ -109,15 +111,14 @@ void Scene::Update()
 		return;
 	}
 
-
-
 	// Consume all the render time since last frame.
+	// Currently the computation time is greater than the frame rate, but with
+	// optimization that should go down.
 	while (lastFramesTime > 0.0f) {
 
 		// Calculate the amount of time to move forward by.
 		float dt = glm::min(timePerFrame, lastFramesTime);
-		
-		
+	
 		// Update the simulation.
 		CheckKeyboardInput();
 		UpdateCamera();
@@ -181,13 +182,10 @@ void Scene::UpdatePhysics(float dt, float t) {
 
 		// Compute LCP Matrix.
 		Collisions::ComputeLCPMatrix(contacts, A);
-		//Collisions::ComputeAMatrix(contacts, A);
 
 		// Guarantee no interpenetration by postRelVel >= 0.
 		Collisions::ComputePreImpulseVelocity(contacts, preRelVel);
-		//Collisions::Minimize(A, preRelVel, postRelVel, impulseMag);
 		Collisions::ComputeImpulseResolution(A, preRelVel, postRelVel, impulseMag);
-		//std::cout << std::endl;
 		Collisions::DoImpulse(contacts, impulseMag);
 
 		// Guarantee no interpenetration by relAcc >= 0.
@@ -195,20 +193,6 @@ void Scene::UpdatePhysics(float dt, float t) {
 		Collisions::ComputeRestingContactVector(contacts, restingB);
 		gte::LCPSolver<float> lcpSolver = gte::LCPSolver<float>(size);
 		if (lcpSolver.Solve(restingB, A, relAcc, restingMag)) {
-			//for (int i = 0; i < restingB.size(); i++) {
-			//	std::cout << "[" << i << "]: " << restingB[i] << std::endl;
-			//}
-			//std::cout << std::endl;
-			//for (int i = 0; i < relAcc.size(); i++) {
-			//	std::cout << "[" << i << "]: " << relAcc[i] << std::endl;
-			//}
-			//std::cout << std::endl;
-			//for (int i = 0; i < restingMag.size(); ++i) {
-			//	if (restingMag[i] > 100.f || restingMag[i] < -100.f) {
-			//		std::cout << "contact: " << contacts[i].isVFContact << std::endl;
-			//		std::cout << "restingB: " << restingB[i] << std::endl;
-			//	}
-			//}
 			Collisions::DoMotion(t, dt, contacts, restingMag);
 		}
 	}
