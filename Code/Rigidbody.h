@@ -5,6 +5,9 @@
 // amount of entities; the first entity will be considered the primary, and all
 // the secondary entities will be moved the same as the primary.
 //
+// It's important to note that many of the rigidbody functions are hardcoded to work
+// with cuboids, but they shouldn't be too hard to convert to work with hulls.
+//
 // Written by Chris Hambacher, 2021.
 
 #include <glm/glm.hpp>
@@ -39,10 +42,10 @@ public:
 
 	// Constructor to initialize one rigidbody for multiple entities (the entities will all move the same).
 	// Used in cases such as having an object and its OBB moving at the same time.
-	Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable = true);
+	Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable = true, float mass = 1.0f);
 
-	// Create a rigidbody from the given entity (if using cuboid, just pass entity).
-	Rigidbody(std::shared_ptr<Entity> entity, bool isMovable = true);
+	// Create a rigidbody from the given entity and mass.
+	Rigidbody(std::shared_ptr<Entity> entity, bool isMovable = true, float mass = 1.0f);
 
 	// State based functions.
 	void SetState(glm::vec3 position, glm::quat orientation, glm::vec3 momentum, glm::vec3 angularMomentum);

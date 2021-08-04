@@ -7,11 +7,12 @@
 // This is the "amount" the update rotation needs to rotate by in order for it to be applied.
 // Any less and it keeps the rotation from the last frame. This is to improve stability.
 #define STABILITY_THRESHOLD 0.000007f
+//#define STABILITY_THRESHOLD 0.0f
 
 // Constructor delegation.
-Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable) : Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>>{entity}, isMovable) {}
+Rigidbody::Rigidbody(std::shared_ptr<Entity> entity, bool isMovable, float mass) : Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>>{entity}, isMovable) {}
 
-Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable)
+Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovable, float mass)
 {
 	assert(entities.size() > 0);
 
@@ -29,7 +30,8 @@ Rigidbody::Rigidbody(std::vector<std::shared_ptr<Entity>> entities, bool isMovab
 	m_radius = glm::length(m_halfwidth);
 
 	// Assume that we dealing with cuboids.
-	m_mass = (m_halfwidth.x * m_halfwidth.y) * (m_halfwidth.z * 8.f);
+	m_mass = mass;
+	//m_mass = (m_halfwidth.x * m_halfwidth.y) * (m_halfwidth.z * 8.f);
 	if (isMovable == false) {
 		m_mass = 1000000;
 	}
@@ -142,6 +144,7 @@ void Rigidbody::Update(float dt, float t) {
 	//std::cout << movement << std::endl;
 	if (movement < STABILITY_THRESHOLD) {
 		m_orientation = glm::quat();
+		m_angularMomentum = glm::vec3();
 		Convert(m_orientation, m_momentum, m_angularMomentum, m_orientationMatrix, m_velocity, m_angularVelocity);
 	}
 

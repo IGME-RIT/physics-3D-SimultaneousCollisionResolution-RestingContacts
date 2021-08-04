@@ -53,9 +53,10 @@ Scene::Scene()
 	// The cuboid constructor is position, halfwidth, and color.
 
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 1.1f), glm::vec3(0.5, 0.7, 2), glm::vec3(1, 1, 1)));
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
 	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers()));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers(), true, 1.0f));
 	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
 
@@ -65,15 +66,22 @@ Scene::Scene()
 	rigidbodies[1]->SetForceFunction(ForceFunctions::NoForce);
 	rigidbodies[1]->SetTorqueFunction(ForceFunctions::NoTorque);
 
+	float topMass = 0.25f;
+
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 2.5f, 0), glm::vec3(0.7f, 0.7f, 0.7f), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers()));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers(), true, topMass));
 	rigidbodies[2]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[2]->SetTorqueFunction(ForceFunctions::NoTorque);
 	 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 3.6f, 0), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[3]->GetEntityPointers()));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 3.8f, 0), glm::vec3(1.3f, 0.3f, 1.3f), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[3]->GetEntityPointers(), true, topMass));
 	rigidbodies[3]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[3]->SetTorqueFunction(ForceFunctions::NoTorque);
+
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 4.8f, 0), glm::vec3(1.4f, 0.4f, 1.4f), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[4]->GetEntityPointers(), true, topMass));
+	rigidbodies[4]->SetForceFunction(ForceFunctions::Gravity);
+	rigidbodies[4]->SetTorqueFunction(ForceFunctions::NoTorque);
 
 	// Get a time for when the scene starts.
 	timePointSceneStart = std::chrono::steady_clock::now();
@@ -175,6 +183,12 @@ void Scene::UpdatePhysics(float dt, float t) {
 	// Collision response.
 	int size = contacts.size();
 	if (size > 0) {
+		// Output contact points.
+		//for (auto contact : contacts) {
+		//	if(contact.bodyOne->m_halfwidth.z == 2 && contact.bodyTwo->m_halfwidth.x == 2)
+		//		std::cout << contact.contactPoint.x << ", " << contact.contactPoint.y << ", " << contact.contactPoint.z << std::endl;
+		//}
+
 		std::vector<float> A = std::vector<float>(size * size);	// This is a 2D matrix in the form of a vector.
 		std::vector<float> preRelVel, postRelVel, impulseMag; 
 		std::vector<float> restingB, relAcc, restingMag; 

@@ -3,10 +3,12 @@
 #include "glm/gtx/norm.hpp"	// Some "experimental" math functions (aka I'm too lazy to code square length myself, glm::length2)
 #include "glm/gtx/normalize_dot.hpp" // For fastNormalize.
 #include "GTE/Mathematics/LCPSolver.h"	// LCP solver :)
+//#include "GTE/Mathematics/BSRational.h"
+//#include "GTE/Mathematics/UIntegerAP32.h"
 #include <iostream>
 
 // If we detect penetration/non-penetration within this threshold, we have a contact.
-#define COLLISION_THRESHOLD 0.005f
+#define COLLISION_THRESHOLD 0.0f
 // Face contacts are usually better, so we apply a bias for it over edge edge contacts.
 #define FACE_COLLISION_BIAS 0.15f
 // Every colliding collision applies this coefficient of restitution, which is the amount of energy
@@ -279,9 +281,13 @@ namespace {
 			//	// projPoint = p - (DOT(p-a, n) / DOT(n, n)) * n
 			//	projectedPoints.push_back(point - glm::dot(point - referencePlanePoint, referenceFaceNormal) / glm::length2(referenceFaceNormal) * referenceFaceNormal);
 			//}
+			//
+			//// Move the incident hull back so that the objects are touching, not colliding.
+			//glm::vec3 distanceToMove = projectedPoints[0] - incidentFacePoints[0];
+			//incidentBody.m_position += distanceToMove;
 
 			// If we have more than four contact points, reduce to four.
-
+			// NOT IMPLEMENTED.
 
 			// Create the manifold.
 			for (int i = 0; i < projectedPoints.size(); i++) {
@@ -625,20 +631,26 @@ namespace Collisions {
 
 			// If the issues was a convergence one, from my testing it's unlikely that increasing the number of
 			// iterations further would lead to a solution in good time. We perturb the input relative velocities
-			// and try to solve again.
-			if (*result == lcpSolver.FAILED_TO_CONVERGE) {
-					std::cout << "Failed to converge within " << lcpSolver.GetMaxIterations() << " iterations, perturbing data and solving again." << std::endl;
+			// and try to solve again. If there was no solution, try to solve it again.
+			if (*result == lcpSolver.FAILED_TO_CONVERGE || *result == lcpSolver.NO_SOLUTION) {
+					std::cout << "Could not converge within " << lcpSolver.GetMaxIterations() << " iterations, perturbing data and solving again." << std::endl;
 					for (int i = 0; i < size; ++i) {
 						if (BVector[i] != 0.0f)
-							BVector[i] -= 0.000001f;
+							BVector[i] -= 0.001f;
 					}
 					// If we still don't have a solution, fill the output vectors with zero.
 					if (!lcpSolver.Solve(BVector, AVector, WVector, JVector)) {
+						std::cout << "Still did not converge after perturbing." << std::endl;
 						std::fill(f.begin(), f.end(), 0);
 						std::fill(dpos.begin(), dpos.end(), 0);
 						return;
 					}
 			}
+			// If there's no solution, we solve using different data type to see if it's a rounding issue error.
+			//else if (*result == lcpSolver.NO_SOLUTION) {
+			//	gte::LCPSolver<gte::BSRational<gte::UIntegerAP32>> rationalLCPSolver = gte::LCPSolver<gte::BSRational<gte::UIntegerAP32>>(size);
+			//	if(rationalLCPSolver.Solve(BVector, AVector, WVector, JVector, result.get())
+			//}
 			// Either way there's no solution to the LCP.
 			else {
 				if (*result == lcpSolver.INVALID_INPUT)
@@ -660,7 +672,7 @@ namespace Collisions {
 
 		for (int i = 0; i < size; ++i) {
 			if (abs(JVector[i]) > 10) {
-				std::cout << "hmm" << std::endl;
+				std::cout << "Error in input from function." << std::endl;
 			}
 		}
 
