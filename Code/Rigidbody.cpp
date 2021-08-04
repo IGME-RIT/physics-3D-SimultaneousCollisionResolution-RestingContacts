@@ -141,7 +141,6 @@ void Rigidbody::Update(float dt, float t) {
 	// If the new orientation is very close to the identity quaternion, use the identity.
 	// It does good to promote stability, while not affecting most rotations.
 	float movement = 1.f - glm::pow(glm::dot(m_orientation, glm::quat()), 2);
-	//std::cout << movement << std::endl;
 	if (movement < STABILITY_THRESHOLD) {
 		m_orientation = glm::quat();
 		m_angularMomentum = glm::vec3();
@@ -159,10 +158,6 @@ void Rigidbody::Update(float dt, float t) {
 	// Zero out internal forces.
 	m_internalForce = glm::vec3(0);
 	m_internalTorque = glm::vec3(0);
-	
-	// Debugging
-
-	//std::cout << "(" << m_orientation[0] << ", " << m_orientation[1] << ", " << m_orientation[2] << ", " << m_orientation[3] << ")" << std::endl;
 
 }
 
@@ -230,6 +225,7 @@ glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const {
 	glm::vec3 support;
 	// Look at every vertex of the hull.
 	for (int i = 0; i < 8; i++) {
+
 		// Get the point in world space.
 		glm::vec3 p = glm::vec3(((i / 4) * 2 - 1) * m_halfwidth.x, (((i % 4) / 2) * 2 - 1) * m_halfwidth.y, ((i % 2) * 2 - 1) * m_halfwidth.z);
 		p = m_position + m_orientation * p;
@@ -237,11 +233,9 @@ glm::vec3 Rigidbody::GetSupport(glm::vec3 v) const {
 		if (glm::dot(p, v) > max) {
 			support = p;
 			max = glm::dot(p, v);
-			//std::cout << "v: " << v[0] << ", " << v[1] << ", " << v[2] << std::endl;
-			//std::cout << p[0] << ", " << p[1] << ", " << p[2] << std::endl;
 		}
 	}
-	//std::cout << std::endl;
+
 	// Convert to world space.
 	return support;
 }	

@@ -162,7 +162,6 @@ struct ForceFunctions
 
 	static glm::vec3 Gravity(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W, float m) {
 		return glm::vec3(0.f, -m, 0.f);
-		//return glm::vec3(0, -1, 0);
 	}
 
 	static glm::vec3 Clockwise(double t, glm::vec3 X, glm::quat Q, glm::vec3 P, glm::vec3 L, glm::mat3 R, glm::vec3 V, glm::vec3 W, float m) {

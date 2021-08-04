@@ -22,6 +22,14 @@ graphics, he is working on a Wii U emulator
 that utilizes Vulkan, see more at http://cemu.info
 */
 
+// The graphics engine was written by Niko, and was used to create
+// the physics engine. The Scene.h file gives insight into the system
+// itself, the Collisions.h file gives insight into the collision
+// detection and collision resolution system, and the Rigidbody.h
+// file gives insight into the objects and updates.
+//
+// Chris Hambacher, 2021
+
 #pragma once
 
 #include <windows.h>

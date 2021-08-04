@@ -29,12 +29,20 @@ that utilizes Vulkan, see more at http://cemu.info
 // an upper limit. More colliding rigidbodies in the scene causes the run
 // time to increase quadratically. 
 //
+// The actual movement of the rigidbodies doesn't look too realistic because
+// there is no implemented friction. This causes boxes to slide around a lot.
+//
 // Rigidbodies may clip into each other for a frame. This can be removed
 // by checking if rigidbodies WILL collide in the next frame, and then
 // stepping those rigidbodies by a different timestep than the rest of the
 // scene such that they barely collide in the next frame, as opposed to 
 // heavily colliding.
 // 
+// If a stack of objects has the top objects have heavier mass than 
+// the bottom objects, the simulation will become unstable. I'm not sure
+// if there's a good way of fixing this, so it's just become a design
+// requirement of the engine.
+//
 // Written by Chris Hambacher, 2021.
 
 #pragma once

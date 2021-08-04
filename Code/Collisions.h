@@ -23,7 +23,6 @@
 namespace Collisions {
 
 	// Class to store a contact point. This gets used by ContactData which stores contact points.
-	// https://github.com/idmillington/cyclone-physics/blob/d75c8d9edeebfdc0deebe203fe862299084b1e30/include/cyclone/contacts.h#L59
 	// This version has been modified to account for storing Rigidbodies and edges. If it's a VF contact, the two edges are invalid.
 	// If it's an edge edge contact, all fields are valid.
 	class Contact {

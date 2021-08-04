@@ -52,34 +52,34 @@ Scene::Scene()
 	// Create the enities for the scene.
 	// The cuboid constructor is position, halfwidth, and color.
 
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 1.1f), glm::vec3(0.5, 0.7, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers(), true, 1.0f));
-	rigidbodies[0]->SetForceFunction(ForceFunctions::Gravity);
+	// Floor, static box.
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -1, 0), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[0]->GetEntityPointers(), false));
+	rigidbodies[0]->SetForceFunction(ForceFunctions::NoForce);
 	rigidbodies[0]->SetTorqueFunction(ForceFunctions::NoTorque);
 
-	// Static one.
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, -1, 0), glm::vec3(2, 0.5, 0.5), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), false));
-	rigidbodies[1]->SetForceFunction(ForceFunctions::NoForce);
+	// First box on top of the floor box.
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 1.1f), glm::vec3(0.5, 0.7, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.0f, 1, 1.2f), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	//cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0.3f, 1, 0), glm::vec3(0.5, 0.5, 2), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[1]->GetEntityPointers(), true, 1.0f));
+	rigidbodies[1]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[1]->SetTorqueFunction(ForceFunctions::NoTorque);
 
-	float topMass = 0.25f;
-
+	// Other staacked boxes.
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 2.5f, 0), glm::vec3(0.7f, 0.7f, 0.7f), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers(), true, topMass));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[2]->GetEntityPointers(), true, 0.3f));
 	rigidbodies[2]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[2]->SetTorqueFunction(ForceFunctions::NoTorque);
 	 
 	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 3.8f, 0), glm::vec3(1.3f, 0.3f, 1.3f), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[3]->GetEntityPointers(), true, topMass));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[3]->GetEntityPointers(), true, 0.25f));
 	rigidbodies[3]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[3]->SetTorqueFunction(ForceFunctions::NoTorque);
 
-	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 4.8f, 0), glm::vec3(1.4f, 0.4f, 1.4f), glm::vec3(1, 1, 1)));
-	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[4]->GetEntityPointers(), true, topMass));
+	cuboids.push_back(std::make_shared<Cuboid>(glm::vec3(0, 4.8f, 0), glm::vec3(1.5f, 0.4f, 1.5f), glm::vec3(1, 1, 1)));
+	rigidbodies.push_back(std::make_shared<Rigidbody>(cuboids[4]->GetEntityPointers(), true, 0.2f));
 	rigidbodies[4]->SetForceFunction(ForceFunctions::Gravity);
 	rigidbodies[4]->SetTorqueFunction(ForceFunctions::NoTorque);
 

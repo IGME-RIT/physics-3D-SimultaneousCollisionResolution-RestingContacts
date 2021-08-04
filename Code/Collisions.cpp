@@ -201,10 +201,12 @@ namespace {
 			referenceFaceNormal = referenceBody.GetAxis(penIndex);
 			incidentModelMatrix = (glm::mat3) incidentBody.GetModelMatrix();
 
-			// Variables relating to the incident face and for determining.
+			// Variables relating to the incident face.
 			glm::vec3 testingFaceNormal;
 			float smallestDot = FLT_MAX;
 			unsigned indexOfIncidentFace;
+
+			// Find the incident plane.
 			for (int i = 0; i < 6; ++i) {
 				testingFaceNormal = incidentBody.GetAxis(i);
 				float dot = glm::dot(testingFaceNormal, referenceFaceNormal);
@@ -217,7 +219,8 @@ namespace {
 
 			// Clip the incident plane against the side planes of the reference face.
 			// We use Sutherland Hodgman clipping for this, and we keep all vertices below the reference plane.
-			// Get the four points that compose the incident face.
+			// Get the maximum four points that compose the incident face (for non-cuboid shapes, this could be
+			// more than four points).
 			std::vector<glm::vec3> incidentFacePoints;
 			{
 				const unsigned& i = indexOfIncidentFace;
@@ -274,6 +277,7 @@ namespace {
 			}
 			
 			// Once we have our set of points, move the set of contact points to the reference face.
+			// UNUSED (as the engine wants the actual points on the object, not projected).
 			std::vector<glm::vec3> projectedPoints;
 			projectedPoints = incidentFacePoints;
 			//glm::vec3 referencePlanePoint = referenceBody.m_position + (referenceFaceNormal * referenceBody.m_halfwidth);
@@ -281,13 +285,9 @@ namespace {
 			//	// projPoint = p - (DOT(p-a, n) / DOT(n, n)) * n
 			//	projectedPoints.push_back(point - glm::dot(point - referencePlanePoint, referenceFaceNormal) / glm::length2(referenceFaceNormal) * referenceFaceNormal);
 			//}
-			//
-			//// Move the incident hull back so that the objects are touching, not colliding.
-			//glm::vec3 distanceToMove = projectedPoints[0] - incidentFacePoints[0];
-			//incidentBody.m_position += distanceToMove;
 
-			// If we have more than four contact points, reduce to four.
-			// NOT IMPLEMENTED.
+			// If we have more than four contact points, reduce to four, for the sake of speed.
+			// NOT IMPLEMENTED (cuboids can only give up to four points).
 
 			// Create the manifold.
 			for (int i = 0; i < projectedPoints.size(); i++) {
@@ -301,8 +301,6 @@ namespace {
 				manifold.PointCount++;
 			}
 			manifold.Normal = referenceFaceNormal;
-
-
 
 		};	// End of GenerateManifold function.
 
@@ -339,8 +337,6 @@ namespace {
 		glm::vec3 n_2 = glm::cross(twoEdgeDirection, closestDirection);
 		glm::vec3 oneClosestPoint = oneEdgePoint + (glm::dot(twoEdgePoint - oneEdgePoint, n_2) / glm::dot(oneEdgeDirection, n_2)) * oneEdgeDirection;
 		glm::vec3 twoClosestPoint = twoEdgePoint + (glm::dot(oneEdgePoint - twoEdgePoint, n_1) / glm::dot(twoEdgeDirection, n_1)) * twoEdgeDirection;
-
-		// Find our "contact normal", which is the cross product between edges and
 
 		// Contact point is the midpoint of these two closest points.
 		Collisions::Contact c;
@@ -631,8 +627,8 @@ namespace Collisions {
 
 			// If the issues was a convergence one, from my testing it's unlikely that increasing the number of
 			// iterations further would lead to a solution in good time. We perturb the input relative velocities
-			// and try to solve again. If there was no solution, try to solve it again.
-			if (*result == lcpSolver.FAILED_TO_CONVERGE || *result == lcpSolver.NO_SOLUTION) {
+			// and try to solve again.
+			if (*result == lcpSolver.FAILED_TO_CONVERGE) {
 					std::cout << "Could not converge within " << lcpSolver.GetMaxIterations() << " iterations, perturbing data and solving again." << std::endl;
 					for (int i = 0; i < size; ++i) {
 						if (BVector[i] != 0.0f)
@@ -646,18 +642,16 @@ namespace Collisions {
 						return;
 					}
 			}
-			// If there's no solution, we solve using different data type to see if it's a rounding issue error.
-			//else if (*result == lcpSolver.NO_SOLUTION) {
-			//	gte::LCPSolver<gte::BSRational<gte::UIntegerAP32>> rationalLCPSolver = gte::LCPSolver<gte::BSRational<gte::UIntegerAP32>>(size);
-			//	if(rationalLCPSolver.Solve(BVector, AVector, WVector, JVector, result.get())
-			//}
-			// Either way there's no solution to the LCP.
+			// If the lcpSolver outputs no solution, there's something wrong with the current setup, or there
+			// was an underlying floating point issue. Resolving likely won't help, so we just fill with zeros.
+			else if (*result == lcpSolver.NO_SOLUTION) {
+				std::fill(f.begin(), f.end(), 0);
+				std::fill(dpos.begin(), dpos.end(), 0);
+				return;
+			}
 			else {
 				if (*result == lcpSolver.INVALID_INPUT)
 					std::cout << "Invalid input" << std::endl;
-				if (*result == lcpSolver.NO_SOLUTION)
-					std::cout << "No solution" << std::endl;
-
 				// There was no solution, return two zero vectors.
 				std::fill(f.begin(), f.end(), 0);
 				std::fill(dpos.begin(), dpos.end(), 0);
@@ -669,12 +663,6 @@ namespace Collisions {
 		// We have a solution to the LCP.
 		// Copy over the impulses to the f vector.
 		std::copy_n(JVector.begin(), size, f.begin());
-
-		for (int i = 0; i < size; ++i) {
-			if (abs(JVector[i]) > 10) {
-				std::cout << "Error in input from function." << std::endl;
-			}
-		}
 
 		// Calculate the post velocity (for testing).
 		for (unsigned i = 0; i < size; ++i) {

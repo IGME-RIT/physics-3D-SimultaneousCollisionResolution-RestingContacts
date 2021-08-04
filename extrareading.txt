@@ -1,0 +1,19 @@
+If you'd like to read about some collision topics, here are some links:
+(some can be found in the README.txt document)
+
+A Real-Time Physics Simulator for Jenga
+https://iypt.ru/wp-content/uploads/2019/08/A-Real-Time-Physics-Simulator-for-Jenga%E2%84%A2.pdf
+Paper discussing collision detection, resolution, engines, and an alternative to resting contacts.
+
+Designing with Physics: Bend the Physics Engine to Your Will
+https://gdcvault.com/play/1021921/Designing-with-Physics-Bend-the
+Talk by Bennett Foddy about collision detection, resolution, mass ratios, and constraints of engines.
+
+MyPhysicsLab
+https://www.myphysicslab.com/index-en.html
+A ton of different physics simulations to play with, often having the logic and math explained below.
+
+Github Issues Thread on Complementary Problem solvers (LCPs, MCPs, MLCPs, etc)
+https://github.com/RobotLocomotion/drake/issues/1772
+A long discussion on various solvers for Complementary Problems. Geometric Tool's implementation of
+Lemke's algorithm was enough for this use case, but this source lists quite a few more solvers.
